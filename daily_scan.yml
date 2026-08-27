@@ -1,0 +1,50 @@
+name: Daily Strategy C Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    # GitHub cron is UTC and has no Europe/Berlin timezone support.
+    # Two runs + a local-time guard make this DST-safe. Exactly one run lands in 22:xx Berlin.
+    - cron: '15 20 * * 1-5'
+    - cron: '15 21 * * 1-5'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: strategy-c-data
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Update data and scan Strategy C
+        env:
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: python scripts/daily_scan.py
+
+      - name: Commit cache and latest result
+        run: |
+          git config user.name "strategy-c-bot"
+          git config user.email "strategy-c-bot@users.noreply.github.com"
+          git add data/ohlcv.csv.gz docs/latest.json
+          git diff --cached --quiet || git commit -m "Daily Strategy C scan"
+          git pull --rebase
+          git push

@@ -1,0 +1,47 @@
+name: Backfill Strategy C History
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: strategy-c-data
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Backfill OHLCV history
+        env:
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+        run: python scripts/backfill.py
+
+      - name: Run first scan
+        env:
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          GITHUB_EVENT_NAME: workflow_dispatch
+        run: python scripts/daily_scan.py
+
+      - name: Commit cache and latest result
+        run: |
+          git config user.name "strategy-c-bot"
+          git config user.email "strategy-c-bot@users.noreply.github.com"
+          git add data/ohlcv.csv.gz docs/latest.json
+          git diff --cached --quiet || git commit -m "Update Strategy C market data"
+          git push
