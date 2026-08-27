@@ -1,0 +1,4 @@
+{
+  "status": "not_initialized",
+  "message": "Run the Backfill workflow, then the Daily Strategy C Scan workflow."
+}

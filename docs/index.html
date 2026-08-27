@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Strategie C – letzter Scan</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 980px; margin: 40px auto; padding: 0 16px; }
+    pre { white-space: pre-wrap; word-break: break-word; background:#f5f5f5; padding:16px; border-radius:10px; }
+  </style>
+</head>
+<body>
+  <h1>Strategie C – letzter Scan</h1>
+  <p>Maschinenlesbare Ausgabe: <a href="latest.json">latest.json</a></p>
+  <pre id="out">Lade …</pre>
+  <script>
+    fetch('latest.json').then(r => r.json()).then(j => {
+      document.getElementById('out').textContent = JSON.stringify(j, null, 2);
+    }).catch(e => document.getElementById('out').textContent = String(e));
+  </script>
+</body>
+</html>
