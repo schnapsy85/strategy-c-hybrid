@@ -3,8 +3,10 @@ import json
 import time
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+from io import StringIO
 
 import requests
+import pandas as pd
 
 
 API_KEY = os.environ["MASSIVE_API_KEY"]
@@ -16,18 +18,15 @@ DATA_DIR.mkdir(exist_ok=True)
 
 HISTORY_FILE = DATA_DIR / "history.json"
 PROGRESS_FILE = DATA_DIR / "backfill_progress.json"
+UNIVERSE_FILE = DATA_DIR / "universe.json"
 
-# Ziel:
-# ca. 520 Kalendertage zurück.
-# Das ergibt typischerweise deutlich mehr als 350 Handelstage.
+# Ca. 520 Kalendertage ergeben deutlich über 300 Handelstage.
 BACKFILL_CALENDAR_DAYS = 520
 
-# Massive Free: 5 Requests / Minute
+# Free-Tier schonen
 REQUEST_SLEEP_SECONDS = 13
 
-# Zur Sicherheit:
-# maximal so viele API-Aufrufe pro Workflow-Lauf.
-# Dadurch kann der Workflow bei Bedarf mehrfach gestartet werden.
+# 120 API-Aufrufe pro Workflow-Lauf
 MAX_REQUESTS_PER_RUN = 120
 
 
@@ -49,6 +48,174 @@ def save_json(path, payload):
         )
 
 
+# ---------------------------------------------------------
+# INDEX-UNIVERSUM LADEN
+# ---------------------------------------------------------
+
+def normalize_ticker(ticker):
+    """
+    Massive verwendet z.B. BRK.B,
+    während Wikipedia BRK.B / BRK-B unterschiedlich liefern kann.
+    """
+    ticker = str(ticker).strip().upper()
+
+    ticker = ticker.replace("-", ".")
+
+    return ticker
+
+
+def fetch_sp500():
+    print("Lade aktuelle S&P-500-Mitglieder...")
+
+    url = (
+        "https://en.wikipedia.org/wiki/"
+        "List_of_S%26P_500_companies"
+    )
+
+    headers = {
+        "User-Agent":
+            "Mozilla/5.0 strategy-c-hybrid-market-data"
+    }
+
+    response = requests.get(
+        url,
+        headers=headers,
+        timeout=30
+    )
+
+    response.raise_for_status()
+
+    tables = pd.read_html(
+        StringIO(response.text)
+    )
+
+    df = tables[0]
+
+    tickers = set(
+        normalize_ticker(x)
+        for x in df["Symbol"].tolist()
+    )
+
+    print(
+        f"S&P 500: {len(tickers)} Ticker"
+    )
+
+    return tickers
+
+
+def fetch_nasdaq100():
+    print("Lade aktuelle Nasdaq-100-Mitglieder...")
+
+    url = (
+        "https://en.wikipedia.org/wiki/"
+        "Nasdaq-100"
+    )
+
+    headers = {
+        "User-Agent":
+            "Mozilla/5.0 strategy-c-hybrid-market-data"
+    }
+
+    response = requests.get(
+        url,
+        headers=headers,
+        timeout=30
+    )
+
+    response.raise_for_status()
+
+    tables = pd.read_html(
+        StringIO(response.text)
+    )
+
+    ticker_candidates = set()
+
+    for df in tables:
+
+        possible_columns = [
+            "Ticker",
+            "Ticker symbol",
+            "Symbol"
+        ]
+
+        ticker_column = None
+
+        for col in possible_columns:
+            if col in df.columns:
+                ticker_column = col
+                break
+
+        if ticker_column is None:
+            continue
+
+        # Die Nasdaq-100-Tabelle enthält ungefähr 100 Einträge.
+        if 90 <= len(df) <= 110:
+
+            values = set(
+                normalize_ticker(x)
+                for x in df[ticker_column].tolist()
+            )
+
+            ticker_candidates.update(values)
+
+    if not ticker_candidates:
+        raise RuntimeError(
+            "Nasdaq-100-Ticker konnten nicht geladen werden."
+        )
+
+    print(
+        f"Nasdaq-100: {len(ticker_candidates)} Ticker"
+    )
+
+    return ticker_candidates
+
+
+def build_universe():
+
+    sp500 = fetch_sp500()
+    nasdaq100 = fetch_nasdaq100()
+
+    combined = sp500 | nasdaq100
+
+    universe = {
+        "generated_at":
+            datetime.now(timezone.utc).isoformat(),
+
+        "sp500":
+            sorted(sp500),
+
+        "nasdaq100":
+            sorted(nasdaq100),
+
+        "combined":
+            sorted(combined),
+
+        "counts": {
+            "sp500": len(sp500),
+            "nasdaq100": len(nasdaq100),
+            "combined": len(combined)
+        }
+    }
+
+    save_json(
+        UNIVERSE_FILE,
+        universe
+    )
+
+    print()
+    print(
+        f"Gesamtuniversum: "
+        f"{len(combined)} eindeutige Ticker"
+    )
+    print()
+
+    return combined
+
+
+# ---------------------------------------------------------
+# HISTORIE / PROGRESS
+# ---------------------------------------------------------
+
 def load_history():
     return load_json(
         HISTORY_FILE,
@@ -60,6 +227,7 @@ def load_history():
 
 
 def load_progress():
+
     default_start = (
         datetime.now(timezone.utc).date()
         - timedelta(days=BACKFILL_CALENDAR_DAYS)
@@ -68,13 +236,21 @@ def load_progress():
     return load_json(
         PROGRESS_FILE,
         {
-            "next_date": default_start.isoformat(),
-            "completed": False
+            "next_date":
+                default_start.isoformat(),
+
+            "completed":
+                False
         }
     )
 
 
+# ---------------------------------------------------------
+# MASSIVE
+# ---------------------------------------------------------
+
 def get_market_day(date_string):
+
     url = (
         f"{BASE_URL}/v2/aggs/grouped/"
         f"locale/us/market/stocks/{date_string}"
@@ -104,15 +280,29 @@ def get_market_day(date_string):
     if payload.get("status") != "OK":
         return []
 
-    return payload.get("results", [])
+    return payload.get(
+        "results",
+        []
+    )
 
 
-def update_history(history, date_string, rows):
+def update_history(
+    history,
+    date_string,
+    rows,
+    universe
+):
+
+    stored = 0
+
     for row in rows:
 
-        ticker = row.get("T")
+        ticker = normalize_ticker(
+            row.get("T", "")
+        )
 
-        if not ticker:
+        # ENTSCHEIDENDER FILTER
+        if ticker not in universe:
             continue
 
         candle = {
@@ -130,14 +320,15 @@ def update_history(history, date_string, rows):
             []
         )
 
-        # Falls derselbe Tag bereits existiert:
         candles = [
             x
             for x in candles
             if x.get("date") != date_string
         ]
 
-        candles.append(candle)
+        candles.append(
+            candle
+        )
 
         candles.sort(
             key=lambda x: x["date"]
@@ -145,21 +336,47 @@ def update_history(history, date_string, rows):
 
         history["symbols"][ticker] = candles
 
+        stored += 1
+
+    return stored
+
+
+# ---------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------
 
 def main():
+
+    universe = build_universe()
 
     history = load_history()
     progress = load_progress()
 
+    # Sicherheit:
+    # Falls die alte riesige History noch lokal vorhanden wäre,
+    # nur gewünschte Ticker behalten.
+    history["symbols"] = {
+        ticker: candles
+        for ticker, candles
+        in history.get("symbols", {}).items()
+        if normalize_ticker(ticker) in universe
+    }
+
     if progress.get("completed"):
-        print("Backfill bereits abgeschlossen.")
+
+        print(
+            "Backfill bereits abgeschlossen."
+        )
+
         return
 
     current_date = datetime.fromisoformat(
         progress["next_date"]
     ).date()
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(
+        timezone.utc
+    ).date()
 
     request_count = 0
     trading_days_found = 0
@@ -167,12 +384,17 @@ def main():
     while current_date <= today:
 
         if request_count >= MAX_REQUESTS_PER_RUN:
+
             print(
-                "Maximale Requests für diesen Lauf erreicht."
+                "Maximale Requests für "
+                "diesen Lauf erreicht."
             )
+
             break
 
-        date_string = current_date.isoformat()
+        date_string = (
+            current_date.isoformat()
+        )
 
         print(
             f"Lade {date_string}..."
@@ -189,13 +411,13 @@ def main():
         except Exception as exc:
 
             print(
-                f"Fehler bei {date_string}: {exc}"
+                f"Fehler bei {date_string}: "
+                f"{exc}"
             )
 
-            # Fortschritt speichern,
-            # aber denselben Tag beim nächsten Lauf
-            # erneut versuchen.
-            progress["next_date"] = date_string
+            progress["next_date"] = (
+                date_string
+            )
 
             save_json(
                 HISTORY_FILE,
@@ -207,19 +429,21 @@ def main():
                 progress
             )
 
-            raise
+            break
 
         if rows:
 
-            print(
-                f"{date_string}: "
-                f"{len(rows)} Wertpapiere"
-            )
-
-            update_history(
+            stored = update_history(
                 history,
                 date_string,
-                rows
+                rows,
+                universe
+            )
+
+            print(
+                f"{date_string}: "
+                f"{len(rows)} Marktwerte, "
+                f"{stored} relevante gespeichert"
             )
 
             trading_days_found += 1
@@ -228,17 +452,17 @@ def main():
 
             print(
                 f"{date_string}: "
-                f"kein Handel / keine Daten"
+                "kein Handel / keine Daten"
             )
 
-        current_date += timedelta(days=1)
+        current_date += timedelta(
+            days=1
+        )
 
         progress["next_date"] = (
             current_date.isoformat()
         )
 
-        # Nach JEDEM Tag speichern.
-        # Dadurch ist ein Abbruch unkritisch.
         save_json(
             HISTORY_FILE,
             history
@@ -257,25 +481,34 @@ def main():
 
         progress["completed"] = True
 
-        print(
-            "Backfill vollständig abgeschlossen."
-        )
-
     history["meta"] = {
+
         "generated_at":
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(
+                timezone.utc
+            ).isoformat(),
 
         "source":
             "Massive",
 
         "symbol_count":
-            len(history["symbols"]),
+            len(
+                history["symbols"]
+            ),
+
+        "universe_size":
+            len(universe),
 
         "backfill_completed":
-            progress.get("completed", False),
+            progress.get(
+                "completed",
+                False
+            ),
 
         "next_date":
-            progress.get("next_date")
+            progress.get(
+                "next_date"
+            )
     }
 
     save_json(
@@ -289,22 +522,36 @@ def main():
     )
 
     print()
-    print("Backfill-Lauf beendet.")
     print(
-        f"Requests: {request_count}"
+        "=============================="
     )
+    print(
+        "BACKFILL STATUS"
+    )
+    print(
+        "=============================="
+    )
+
+    print(
+        f"Requests: "
+        f"{request_count}"
+    )
+
     print(
         f"Handelstage gefunden: "
         f"{trading_days_found}"
     )
+
     print(
-        f"Symbole insgesamt: "
+        f"Gespeicherte Symbole: "
         f"{len(history['symbols'])}"
     )
+
     print(
         f"Nächster Tag: "
         f"{progress.get('next_date')}"
     )
+
     print(
         f"Fertig: "
         f"{progress.get('completed')}"
