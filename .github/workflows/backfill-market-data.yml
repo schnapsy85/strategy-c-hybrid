@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -66,9 +68,14 @@ jobs:
 
           echo ""
           echo "=== history file size ==="
-          ls -lh data/history.json || true
 
-      - name: Commit backfill data
+          if [ -f data/history.json ]; then
+            ls -lh data/history.json
+          else
+            echo "Keine history.json vorhanden."
+          fi
+
+      - name: Commit and push backfill data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -79,7 +86,38 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "Keine Änderungen."
-          else
-            git commit -m "Backfill market data"
-            git push
+            exit 0
+          fi
+
+          git commit -m "Backfill market data"
+
+          echo ""
+          echo "Aktuellen Stand von origin/main holen..."
+          git fetch origin main
+
+          echo ""
+          echo "Backfill-Commit auf aktuellen main-Stand setzen..."
+          git rebase origin/main
+
+          echo ""
+          echo "Änderungen pushen..."
+          git push origin HEAD:main
+
+      - name: Final status
+        run: |
+          echo ""
+          echo "===================================="
+          echo "BACKFILL WORKFLOW ERFOLGREICH"
+          echo "===================================="
+
+          if [ -f data/backfill_progress.json ]; then
+            echo ""
+            echo "Aktueller Fortschritt:"
+            cat data/backfill_progress.json
+          fi
+
+          if [ -f data/history.json ]; then
+            echo ""
+            echo "History-Dateigröße:"
+            ls -lh data/history.json
           fi
