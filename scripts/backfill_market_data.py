@@ -107,67 +107,58 @@ def fetch_nasdaq100():
     print("Lade aktuelle Nasdaq-100-Mitglieder...")
 
     url = (
-        "https://en.wikipedia.org/wiki/"
-        "Nasdaq-100"
+        "https://raw.githubusercontent.com/"
+        "Gary-Strauss/nasdaq100-scraper/"
+        "main/data/nasdaq100_constituents.csv"
     )
-
-    headers = {
-        "User-Agent":
-            "Mozilla/5.0 strategy-c-hybrid-market-data"
-    }
 
     response = requests.get(
         url,
-        headers=headers,
         timeout=30
     )
 
     response.raise_for_status()
 
-    tables = pd.read_html(
+    df = pd.read_csv(
         StringIO(response.text)
     )
 
-    ticker_candidates = set()
+    # mögliche Spaltennamen robust prüfen
+    ticker_column = None
 
-    for df in tables:
+    for col in df.columns:
+        normalized = str(col).strip().lower()
 
-        possible_columns = [
-            "Ticker",
-            "Ticker symbol",
-            "Symbol"
-        ]
+        if normalized in [
+            "ticker",
+            "symbol",
+            "ticker symbol"
+        ]:
+            ticker_column = col
+            break
 
-        ticker_column = None
-
-        for col in possible_columns:
-            if col in df.columns:
-                ticker_column = col
-                break
-
-        if ticker_column is None:
-            continue
-
-        # Die Nasdaq-100-Tabelle enthält ungefähr 100 Einträge.
-        if 90 <= len(df) <= 110:
-
-            values = set(
-                normalize_ticker(x)
-                for x in df[ticker_column].tolist()
-            )
-
-            ticker_candidates.update(values)
-
-    if not ticker_candidates:
+    if ticker_column is None:
         raise RuntimeError(
-            "Nasdaq-100-Ticker konnten nicht geladen werden."
+            f"Keine Ticker-Spalte gefunden. "
+            f"Vorhandene Spalten: {list(df.columns)}"
+        )
+
+    tickers = set(
+        normalize_ticker(x)
+        for x in df[ticker_column].dropna().tolist()
+    )
+
+    if len(tickers) < 95:
+        raise RuntimeError(
+            f"Zu wenige Nasdaq-100-Ticker geladen: "
+            f"{len(tickers)}"
         )
 
     print(
-        f"Nasdaq-100: {len(ticker_candidates)} Ticker"
+        f"Nasdaq-100: {len(tickers)} Ticker"
     )
 
-    return ticker_candidates
+    return tickers
 
 
 def build_universe():
