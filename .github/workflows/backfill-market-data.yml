@@ -49,13 +49,24 @@ jobs:
           fi
 
           echo ""
-          echo "=== universe ==="
+          echo "=== universe summary ==="
 
           if [ -f data/universe.json ]; then
-            cat data/universe.json
+            python - <<'PY'
+          import json
+
+          with open("data/universe.json", "r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          print(data.get("counts", {}))
+          PY
           else
             echo "Keine Universe-Datei vorhanden."
           fi
+
+          echo ""
+          echo "=== history file size ==="
+          ls -lh data/history.json || true
 
       - name: Commit backfill data
         run: |
