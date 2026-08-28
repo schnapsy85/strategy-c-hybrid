@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.massive_client import MassiveClient, MassiveAPIError
 from src.storage import append_rows, load_store, save_store
-from src.universe import load_sp500_members
+from src.universe import load_combined_members
 
 STORE = ROOT / "data" / "ohlcv.csv.gz"
 CONFIG = ROOT / "config.json"
@@ -28,22 +28,19 @@ def rows_from_grouped(results: list[dict], allowed: set[str], d: date) -> pd.Dat
         if any(v is None for v in values):
             continue
         rows.append({
-            "date": d.isoformat(),
-            "ticker": ticker,
-            "open": r["o"],
-            "high": r["h"],
-            "low": r["l"],
-            "close": r["c"],
-            "volume": r["v"],
+            "date": d.isoformat(), "ticker": ticker,
+            "open": r["o"], "high": r["h"], "low": r["l"],
+            "close": r["c"], "volume": r["v"],
         })
     return pd.DataFrame(rows)
 
 
 def main() -> None:
     cfg = json.loads(CONFIG.read_text())
-    universe = load_sp500_members()
+    universe = load_combined_members()
     tickers = set(universe["ticker"].tolist())
     tickers.add(str(cfg["market_proxy"]))
+    tickers.add(str(cfg.get("market_index_ticker", "I:SPX")))
 
     client = MassiveClient.from_env(int(cfg["massive_calls_per_minute"]))
     store = load_store(STORE)
@@ -54,7 +51,9 @@ def main() -> None:
     weekdays = [d.date() for d in pd.bdate_range(start=start, end=end)]
     pending = [d for d in weekdays if d not in existing_dates]
 
-    print(f"Universe: {len(universe)} S&P 500 securities + {cfg['market_proxy']} market proxy")
+    sp_count = int(universe["in_sp500"].sum())
+    ndx_count = int(universe["in_nasdaq100"].sum())
+    print(f"Shared universe: {len(universe)} unique securities (S&P 500={sp_count}, Nasdaq-100={ndx_count})")
     print(f"Backfill window: {start} to {end}; pending weekdays: {len(pending)}")
 
     added = 0
@@ -73,13 +72,12 @@ def main() -> None:
         print(f"{i}/{len(pending)} {d}: +{len(rows)} rows")
 
     save_store(store, STORE)
-
     counts = store[store["ticker"].isin(tickers)].groupby("ticker").size()
     min_bars = int(cfg["min_history_bars"])
     good = int((counts.reindex(sorted(tickers), fill_value=0) >= min_bars).sum())
     coverage = good / len(tickers) if tickers else 0.0
     print(f"Added rows: {added}")
-    print(f"History coverage >= {min_bars} bars: {good}/{len(tickers)} ({coverage:.1%})")
+    print(f"Shared history coverage >= {min_bars} bars: {good}/{len(tickers)} ({coverage:.1%})")
 
 
 if __name__ == "__main__":
