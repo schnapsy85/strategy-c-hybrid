@@ -6,7 +6,7 @@ import pandas as pd
 import requests
 
 WIKIPEDIA_SP500 = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-WIKIPEDIA_NASDAQ100 = "https://en.wikipedia.org/wiki/Nasdaq-100"
+WIKIPEDIA_NASDAQ100 = "https://en.wikipedia.org/wiki/List_of_NASDAQ-100_companies"
 HEADERS = {"User-Agent": "strategy-c-hybrid/1.0"}
 
 
@@ -17,7 +17,6 @@ def _read_tables(url: str) -> list[pd.DataFrame]:
 
 
 def _flat_columns(table: pd.DataFrame) -> pd.DataFrame:
-    """Flatten Wikipedia/pandas MultiIndex headers and strip footnote markers."""
     out = table.copy()
     if isinstance(out.columns, pd.MultiIndex):
         cols = []
@@ -39,10 +38,6 @@ def _find_col(columns, names):
 
 
 def load_sp500_members() -> pd.DataFrame:
-    """Return current S&P 500 members.
-
-    Columns: ticker, security, sector, sub_industry.
-    """
     tables = _read_tables(WIKIPEDIA_SP500)
     if not tables:
         raise RuntimeError("Could not read the S&P 500 constituents table")
@@ -50,7 +45,6 @@ def load_sp500_members() -> pd.DataFrame:
     required = {"Symbol", "Security", "GICS Sector", "GICS Sub-Industry"}
     if not required.issubset(table.columns):
         raise RuntimeError(f"Unexpected S&P 500 table columns: {list(table.columns)}")
-
     out = table[["Symbol", "Security", "GICS Sector", "GICS Sub-Industry"]].copy()
     out.columns = ["ticker", "security", "sector", "sub_industry"]
     out["ticker"] = out["ticker"].astype(str).str.strip().map(normalize_massive_ticker)
@@ -58,13 +52,9 @@ def load_sp500_members() -> pd.DataFrame:
 
 
 def load_nasdaq100_members() -> pd.DataFrame:
-    """Return current Nasdaq-100 members robustly across Wikipedia table changes."""
     tables = _read_tables(WIKIPEDIA_NASDAQ100)
     table = None
     ticker_col = company_col = None
-
-    # Wikipedia has changed both the table position and header names over time.
-    # Accept common ticker/company variants and flatten MultiIndex headers first.
     for raw in tables:
         candidate = _flat_columns(raw)
         ticker = _find_col(candidate.columns, ["Ticker", "Ticker symbol", "Symbol"])
@@ -74,14 +64,11 @@ def load_nasdaq100_members() -> pd.DataFrame:
             ticker_col = ticker
             company_col = company
             break
-
     if table is None:
         available = [list(_flat_columns(t).columns) for t in tables]
         raise RuntimeError(f"Could not identify the Nasdaq-100 constituents table. Tables found: {available}")
-
-    sector_col = _find_col(table.columns, ["GICS Sector", "Sector"])
-    sub_col = _find_col(table.columns, ["GICS Sub-Industry", "Subsector", "Industry"])
-
+    sector_col = _find_col(table.columns, ["GICS Sector", "ICB Industry", "Sector"])
+    sub_col = _find_col(table.columns, ["GICS Sub-Industry", "ICB Subsector", "Subsector", "Industry"])
     out = pd.DataFrame({
         "ticker": table[ticker_col].astype(str).str.strip().map(normalize_massive_ticker),
         "security": table[company_col].astype(str).str.strip(),
@@ -89,11 +76,12 @@ def load_nasdaq100_members() -> pd.DataFrame:
         "sub_industry": table[sub_col].astype(str).str.strip() if sub_col else "",
     })
     out = out[out["ticker"].str.match(r"^[A-Z0-9.]+$", na=False)]
+    if len(out) < 90:
+        raise RuntimeError(f"Nasdaq-100 constituent list unexpectedly short: {len(out)} rows")
     return out.drop_duplicates(subset=["ticker"]).sort_values("ticker").reset_index(drop=True)
 
 
 def load_combined_members() -> pd.DataFrame:
-    """Union used by the shared OHLCV store for Strategies A and C."""
     sp = load_sp500_members().assign(in_sp500=True, in_nasdaq100=False)
     ndx = load_nasdaq100_members().assign(in_sp500=False, in_nasdaq100=True)
     combined = pd.concat([sp, ndx], ignore_index=True)
@@ -108,5 +96,4 @@ def load_combined_members() -> pd.DataFrame:
 
 
 def normalize_massive_ticker(ticker: str) -> str:
-    # Massive/Polygon convention uses a dot for class shares (e.g. BRK.B, BF.B).
     return ticker.strip().upper().replace("-", ".")
