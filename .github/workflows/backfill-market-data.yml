@@ -9,98 +9,54 @@ permissions:
   id-token: write
 
 concurrency:
-  group: massive-backfill
+  group: strategy-c-data
   cancel-in-progress: false
 
 jobs:
   backfill:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
 
     steps:
-      # ------------------------------------------------------------
-      # 1. Repository holen
-      # ------------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
 
-      # ------------------------------------------------------------
-      # 2. Sicherstellen, dass wirklich der aktuelle main benutzt wird
-      # ------------------------------------------------------------
       - name: Sync with latest main
         run: |
           echo "Hole aktuellen Stand von main..."
           git fetch origin main
           git reset --hard origin/main
-
-          echo ""
-          echo "Aktueller Commit:"
           git log -1 --oneline
 
-      # ------------------------------------------------------------
-      # 3. Python installieren
-      # ------------------------------------------------------------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
 
-      # ------------------------------------------------------------
-      # 4. Dependencies installieren
-      # ------------------------------------------------------------
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-
           if [ -f requirements.txt ]; then
-            echo "requirements.txt gefunden."
             pip install -r requirements.txt
           else
-            echo "Keine requirements.txt gefunden."
-            echo "Installiere Standard-Pakete..."
             pip install requests pandas numpy
           fi
 
-      # ------------------------------------------------------------
-      # 5. Massive Backfill ausführen
-      # ------------------------------------------------------------
       - name: Run Massive backfill
         env:
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
-        run: |
-          echo "=========================================="
-          echo "Massive Backfill startet"
-          echo "=========================================="
+        run: python scripts/backfill.py
 
-          python scripts/backfill.py
-
-          echo ""
-          echo "=========================================="
-          echo "Massive Backfill beendet"
-          echo "=========================================="
-
-      # ------------------------------------------------------------
-      # 6. Prüfen, was erzeugt/geändert wurde
-      # ------------------------------------------------------------
       - name: Show backfill status
         run: |
-          echo "Git Status:"
           git status --short
-
-          echo ""
-          echo "Data-Verzeichnis:"
           ls -lah data/ || true
-
-          echo ""
-          echo "JSON-Dateien:"
           find data -maxdepth 1 -type f -name "*.json" -exec ls -lh {} \; || true
 
-      # ------------------------------------------------------------
-      # 7. JSON-Dateien grob validieren
-      # ------------------------------------------------------------
       - name: Validate JSON files
         run: |
           python <<'PY'
@@ -108,104 +64,50 @@ jobs:
           from pathlib import Path
 
           data_dir = Path("data")
-
           if not data_dir.exists():
               print("WARNUNG: data/ existiert nicht.")
               raise SystemExit(0)
 
           files = list(data_dir.glob("*.json"))
-
-          if not files:
-              print("Keine JSON-Dateien gefunden.")
-              raise SystemExit(0)
-
-          print(f"Prüfe {len(files)} JSON-Dateien...")
-
           failed = []
-
           for file in files:
               try:
                   with open(file, "r", encoding="utf-8") as f:
                       json.load(f)
-
-                  size = file.stat().st_size / 1024 / 1024
-                  print(f"OK: {file} ({size:.2f} MB)")
-
+                  print(f"OK: {file}")
               except Exception as exc:
                   print(f"FEHLER: {file}: {exc}")
                   failed.append(str(file))
 
           if failed:
-              raise SystemExit(
-                  "Ungültige JSON-Dateien: " + ", ".join(failed)
-              )
-
-          print("Alle JSON-Dateien sind gültig.")
+              raise SystemExit("Ungültige JSON-Dateien: " + ", ".join(failed))
           PY
 
-      # ------------------------------------------------------------
-      # 8. Änderungen EINMAL committen
-      # ------------------------------------------------------------
-      - name: Commit backfill data
-        id: commit
+      - name: Commit and push backfill data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          echo "Füge Änderungen hinzu..."
           git add data/
 
           if git diff --cached --quiet; then
             echo "Keine Änderungen vorhanden."
-            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo ""
-          echo "Änderungen:"
           git diff --cached --stat
-
-          git commit -m "Update market data"
-
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-
-      # ------------------------------------------------------------
-      # 9. Einmaliger Push
-      # ------------------------------------------------------------
-      - name: Push backfill data
-        if: steps.commit.outputs.changed == 'true'
-        run: |
-          echo "Push nach origin/main..."
-
+          git commit -m "Backfill market data"
           git push origin HEAD:main
 
-          echo ""
-          echo "Push erfolgreich."
-
-      # ------------------------------------------------------------
-      # 10. Pages-Ordner vorbereiten
-      # ------------------------------------------------------------
       - name: Prepare GitHub Pages
         run: |
-          echo "Prüfe Pages-Inhalt..."
-
-          # Falls bereits ein docs-Verzeichnis existiert,
-          # wird dieses als Website verwendet.
-
           if [ -d "docs" ]; then
             echo "docs/ gefunden."
-
           elif [ -d "public" ]; then
-            echo "public/ gefunden."
             mkdir -p docs
             cp -R public/. docs/
-
           else
-            echo "Kein docs/ oder public/ gefunden."
-            echo "Erzeuge minimale Pages-Struktur."
-
             mkdir -p docs
-
             cat > docs/index.html <<'EOF'
           <!DOCTYPE html>
           <html lang="de">
@@ -214,85 +116,38 @@ jobs:
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Strategy C Hybrid</title>
           </head>
-
           <body>
             <h1>Strategy C Hybrid</h1>
             <p>Market-Daten wurden erfolgreich aktualisiert.</p>
-
-            <ul>
-              <li><a href="../data/universe.json">Universe</a></li>
-              <li><a href="../data/history.json">History</a></li>
-            </ul>
           </body>
           </html>
           EOF
           fi
 
-          echo ""
-          echo "Pages-Inhalt:"
-          find docs -maxdepth 2 -type f | sort | head -100
-
-      # ------------------------------------------------------------
-      # 11. Data-Dateien für Pages bereitstellen
-      # ------------------------------------------------------------
       - name: Copy market data to Pages
         run: |
           mkdir -p docs/data
-
           if [ -d "data" ]; then
             cp -R data/. docs/data/
           fi
 
-          echo "Dateien für Pages:"
-          find docs -maxdepth 2 -type f | sort | head -100
-
-      # ------------------------------------------------------------
-      # 12. GitHub Pages konfigurieren
-      # ------------------------------------------------------------
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # ------------------------------------------------------------
-      # 13. Pages Artifact hochladen
-      # ------------------------------------------------------------
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./docs"
 
-      # ------------------------------------------------------------
-      # 14. GitHub Pages deployen
-      # ------------------------------------------------------------
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
 
-      # ------------------------------------------------------------
-      # 15. Abschlussstatus
-      # ------------------------------------------------------------
       - name: Final status
         if: always()
         run: |
-          echo ""
-          echo "=========================================="
           echo "FINAL STATUS"
-          echo "=========================================="
-
-          echo ""
-          echo "Git:"
           git status --short || true
-
-          echo ""
-          echo "Letzter Commit:"
           git log -1 --oneline || true
-
-          echo ""
-          echo "Data:"
           ls -lh data/ 2>/dev/null || true
-
-          echo ""
-          echo "Pages:"
           ls -lh docs/ 2>/dev/null || true
-
-          echo ""
-          echo "Workflow beendet."
