@@ -16,6 +16,28 @@ def _read_tables(url: str) -> list[pd.DataFrame]:
     return pd.read_html(StringIO(html.text))
 
 
+def _flat_columns(table: pd.DataFrame) -> pd.DataFrame:
+    """Flatten Wikipedia/pandas MultiIndex headers and strip footnote markers."""
+    out = table.copy()
+    if isinstance(out.columns, pd.MultiIndex):
+        cols = []
+        for col in out.columns:
+            parts = [str(x).strip() for x in col if str(x).strip() and not str(x).startswith("Unnamed")]
+            cols.append(parts[-1] if parts else str(col[-1]).strip())
+        out.columns = cols
+    else:
+        out.columns = [str(c).strip() for c in out.columns]
+    return out
+
+
+def _find_col(columns, names):
+    normalized = {str(c).strip().lower(): c for c in columns}
+    for name in names:
+        if name.lower() in normalized:
+            return normalized[name.lower()]
+    return None
+
+
 def load_sp500_members() -> pd.DataFrame:
     """Return current S&P 500 members.
 
@@ -24,7 +46,7 @@ def load_sp500_members() -> pd.DataFrame:
     tables = _read_tables(WIKIPEDIA_SP500)
     if not tables:
         raise RuntimeError("Could not read the S&P 500 constituents table")
-    table = tables[0].copy()
+    table = _flat_columns(tables[0])
     required = {"Symbol", "Security", "GICS Sector", "GICS Sub-Industry"}
     if not required.issubset(table.columns):
         raise RuntimeError(f"Unexpected S&P 500 table columns: {list(table.columns)}")
@@ -36,32 +58,37 @@ def load_sp500_members() -> pd.DataFrame:
 
 
 def load_nasdaq100_members() -> pd.DataFrame:
-    """Return current Nasdaq-100 members.
-
-    Wikipedia occasionally changes the exact table position, so select the
-    constituents table by its columns rather than by a fixed index.
-    Columns returned: ticker, security, sector, sub_industry.
-    """
+    """Return current Nasdaq-100 members robustly across Wikipedia table changes."""
     tables = _read_tables(WIKIPEDIA_NASDAQ100)
     table = None
-    for candidate in tables:
-        cols = {str(c).strip() for c in candidate.columns}
-        if "Ticker" in cols and ("Company" in cols or "Company name" in cols):
-            table = candidate.copy()
-            break
-    if table is None:
-        raise RuntimeError("Could not identify the Nasdaq-100 constituents table")
+    ticker_col = company_col = None
 
-    company_col = "Company" if "Company" in table.columns else "Company name"
-    sector_col = "GICS Sector" if "GICS Sector" in table.columns else ("Sector" if "Sector" in table.columns else None)
-    sub_col = "GICS Sub-Industry" if "GICS Sub-Industry" in table.columns else ("Subsector" if "Subsector" in table.columns else None)
+    # Wikipedia has changed both the table position and header names over time.
+    # Accept common ticker/company variants and flatten MultiIndex headers first.
+    for raw in tables:
+        candidate = _flat_columns(raw)
+        ticker = _find_col(candidate.columns, ["Ticker", "Ticker symbol", "Symbol"])
+        company = _find_col(candidate.columns, ["Company", "Company name", "Security"])
+        if ticker is not None and company is not None and len(candidate) >= 90:
+            table = candidate
+            ticker_col = ticker
+            company_col = company
+            break
+
+    if table is None:
+        available = [list(_flat_columns(t).columns) for t in tables]
+        raise RuntimeError(f"Could not identify the Nasdaq-100 constituents table. Tables found: {available}")
+
+    sector_col = _find_col(table.columns, ["GICS Sector", "Sector"])
+    sub_col = _find_col(table.columns, ["GICS Sub-Industry", "Subsector", "Industry"])
 
     out = pd.DataFrame({
-        "ticker": table["Ticker"].astype(str).str.strip().map(normalize_massive_ticker),
+        "ticker": table[ticker_col].astype(str).str.strip().map(normalize_massive_ticker),
         "security": table[company_col].astype(str).str.strip(),
         "sector": table[sector_col].astype(str).str.strip() if sector_col else "",
         "sub_industry": table[sub_col].astype(str).str.strip() if sub_col else "",
     })
+    out = out[out["ticker"].str.match(r"^[A-Z0-9.]+$", na=False)]
     return out.drop_duplicates(subset=["ticker"]).sort_values("ticker").reset_index(drop=True)
 
 
