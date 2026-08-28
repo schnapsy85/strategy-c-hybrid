@@ -5,8 +5,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: strategy-c-data
@@ -80,22 +78,6 @@ jobs:
           git diff --cached --stat
           git commit -m "Update market data and Strategy A/C scans"
           git push origin HEAD:main
-      - name: Prepare GitHub Pages
-        run: |
-          if [ ! -d "docs" ]; then mkdir -p docs; fi
-      - name: Copy market data to Pages
-        run: |
-          mkdir -p docs/data
-          cp -R data/. docs/data/
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "./docs"
-      - name: Deploy GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
       - name: Final status
         if: always()
         run: |
@@ -104,3 +86,4 @@ jobs:
           git log -1 --oneline || true
           ls -lh data/ 2>/dev/null || true
           ls -lh docs/ 2>/dev/null || true
+          echo "GitHub Pages deployment is intentionally handled by update-market-data.yml only."
