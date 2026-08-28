@@ -20,13 +20,13 @@ HISTORY_FILE = DATA_DIR / "history.json"
 PROGRESS_FILE = DATA_DIR / "backfill_progress.json"
 UNIVERSE_FILE = DATA_DIR / "universe.json"
 
-# Ca. 520 Kalendertage ergeben deutlich über 300 Handelstage.
+# Ca. 520 Kalendertage ergeben deutlich über 300 Handelstage
 BACKFILL_CALENDAR_DAYS = 520
 
 # Free-Tier schonen
 REQUEST_SLEEP_SECONDS = 13
 
-# 120 API-Aufrufe pro Workflow-Lauf
+# Anzahl Massive-Requests pro Workflow-Lauf
 MAX_REQUESTS_PER_RUN = 120
 
 
@@ -48,21 +48,20 @@ def save_json(path, payload):
         )
 
 
-# ---------------------------------------------------------
-# INDEX-UNIVERSUM LADEN
-# ---------------------------------------------------------
-
 def normalize_ticker(ticker):
     """
-    Massive verwendet z.B. BRK.B,
-    während Wikipedia BRK.B / BRK-B unterschiedlich liefern kann.
+    Vereinheitlicht Ticker-Schreibweisen.
+    Beispiel:
+    BRK-B -> BRK.B
     """
     ticker = str(ticker).strip().upper()
-
     ticker = ticker.replace("-", ".")
-
     return ticker
 
+
+# ---------------------------------------------------------
+# S&P 500 LADEN
+# ---------------------------------------------------------
 
 def fetch_sp500():
     print("Lade aktuelle S&P-500-Mitglieder...")
@@ -93,7 +92,7 @@ def fetch_sp500():
 
     tickers = set(
         normalize_ticker(x)
-        for x in df["Symbol"].tolist()
+        for x in df["Symbol"].dropna().tolist()
     )
 
     print(
@@ -103,63 +102,144 @@ def fetch_sp500():
     return tickers
 
 
+# ---------------------------------------------------------
+# NASDAQ 100
+# ---------------------------------------------------------
+
 def fetch_nasdaq100():
-    print("Lade aktuelle Nasdaq-100-Mitglieder...")
+    print("Lade Nasdaq-100-Mitglieder...")
 
-    url = (
-        "https://raw.githubusercontent.com/"
-        "Gary-Strauss/nasdaq100-scraper/"
-        "main/data/nasdaq100_constituents.csv"
-    )
+    #
+    # Feste Bootstrap-Liste.
+    #
+    # Hintergrund:
+    # Die automatische Wikipedia-/CSV-Erkennung war
+    # in GitHub Actions nicht stabil genug.
+    #
+    # Diese Liste dient zunächst als robuste technische Basis.
+    # Später kann sie separat automatisiert aktualisiert werden.
+    #
 
-    response = requests.get(
-        url,
-        timeout=30
-    )
+    tickers = {
+        "AAPL",
+        "ABNB",
+        "ADBE",
+        "ADI",
+        "ADP",
+        "ADSK",
+        "AEP",
+        "ALAB",
+        "ALNY",
+        "AMAT",
+        "AMD",
+        "AMGN",
+        "AMZN",
+        "APP",
+        "ARM",
+        "ASML",
+        "AVGO",
+        "AXON",
+        "BKNG",
+        "BKR",
+        "CCEP",
+        "CDNS",
+        "CEG",
+        "CMCSA",
+        "COST",
+        "CPRT",
+        "CRWD",
+        "CSCO",
+        "CSX",
+        "CTAS",
+        "DASH",
+        "DDOG",
+        "DXCM",
+        "EA",
+        "EXC",
+        "FANG",
+        "FAST",
+        "FTNT",
+        "GEHC",
+        "GFS",
+        "GILD",
+        "GOOG",
+        "GOOGL",
+        "HON",
+        "IDXX",
+        "INTC",
+        "INTU",
+        "ISRG",
+        "KDP",
+        "KHC",
+        "KLAC",
+        "LIN",
+        "LRCX",
+        "MAR",
+        "MCHP",
+        "MDB",
+        "MDLZ",
+        "MELI",
+        "META",
+        "MNST",
+        "MRVL",
+        "MSFT",
+        "MSTR",
+        "MU",
+        "NBIS",
+        "NFLX",
+        "NVDA",
+        "NXPI",
+        "ODFL",
+        "ON",
+        "ORLY",
+        "PANW",
+        "PAYX",
+        "PCAR",
+        "PDD",
+        "PEP",
+        "PLTR",
+        "PYPL",
+        "QCOM",
+        "REGN",
+        "RKLB",
+        "ROP",
+        "ROST",
+        "SBUX",
+        "SNPS",
+        "SPCX",
+        "TEAM",
+        "TER",
+        "TMUS",
+        "TSLA",
+        "TTD",
+        "TTWO",
+        "TXN",
+        "VRTX",
+        "WBD",
+        "WDAY",
+        "XEL"
+    }
 
-    response.raise_for_status()
-
-    df = pd.read_csv(
-        StringIO(response.text)
-    )
-
-    # mögliche Spaltennamen robust prüfen
-    ticker_column = None
-
-    for col in df.columns:
-        normalized = str(col).strip().lower()
-
-        if normalized in [
-            "ticker",
-            "symbol",
-            "ticker symbol"
-        ]:
-            ticker_column = col
-            break
-
-    if ticker_column is None:
-        raise RuntimeError(
-            f"Keine Ticker-Spalte gefunden. "
-            f"Vorhandene Spalten: {list(df.columns)}"
-        )
-
-    tickers = set(
+    tickers = {
         normalize_ticker(x)
-        for x in df[ticker_column].dropna().tolist()
-    )
-
-    if len(tickers) < 95:
-        raise RuntimeError(
-            f"Zu wenige Nasdaq-100-Ticker geladen: "
-            f"{len(tickers)}"
-        )
+        for x in tickers
+    }
 
     print(
         f"Nasdaq-100: {len(tickers)} Ticker"
     )
 
+    if len(tickers) < 95:
+        raise RuntimeError(
+            f"Zu wenige Nasdaq-100-Ticker: {len(tickers)}"
+        )
+
     return tickers
 
+
+# ---------------------------------------------------------
+# GESAMTUNIVERSUM
+# ---------------------------------------------------------
 
 def build_universe():
 
@@ -170,7 +250,9 @@ def build_universe():
 
     universe = {
         "generated_at":
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(
+                timezone.utc
+            ).isoformat(),
 
         "sp500":
             sorted(sp500),
@@ -182,9 +264,14 @@ def build_universe():
             sorted(combined),
 
         "counts": {
-            "sp500": len(sp500),
-            "nasdaq100": len(nasdaq100),
-            "combined": len(combined)
+            "sp500":
+                len(sp500),
+
+            "nasdaq100":
+                len(nasdaq100),
+
+            "combined":
+                len(combined)
         }
     }
 
@@ -204,7 +291,7 @@ def build_universe():
 
 
 # ---------------------------------------------------------
-# HISTORIE / PROGRESS
+# HISTORIE
 # ---------------------------------------------------------
 
 def load_history():
@@ -217,11 +304,19 @@ def load_history():
     )
 
 
+# ---------------------------------------------------------
+# BACKFILL-FORTSCHRITT
+# ---------------------------------------------------------
+
 def load_progress():
 
     default_start = (
-        datetime.now(timezone.utc).date()
-        - timedelta(days=BACKFILL_CALENDAR_DAYS)
+        datetime.now(
+            timezone.utc
+        ).date()
+        - timedelta(
+            days=BACKFILL_CALENDAR_DAYS
+        )
     )
 
     return load_json(
@@ -237,7 +332,7 @@ def load_progress():
 
 
 # ---------------------------------------------------------
-# MASSIVE
+# MASSIVE DAILY MARKET SUMMARY
 # ---------------------------------------------------------
 
 def get_market_day(date_string):
@@ -277,6 +372,10 @@ def get_market_day(date_string):
     )
 
 
+# ---------------------------------------------------------
+# MARKTDATEN FILTERN UND SPEICHERN
+# ---------------------------------------------------------
+
 def update_history(
     history,
     date_string,
@@ -292,29 +391,54 @@ def update_history(
             row.get("T", "")
         )
 
-        # ENTSCHEIDENDER FILTER
+        if not ticker:
+            continue
+
+        #
+        # Nur Nasdaq-100 oder S&P 500 speichern
+        #
         if ticker not in universe:
             continue
 
         candle = {
-            "date": date_string,
-            "open": row.get("o"),
-            "high": row.get("h"),
-            "low": row.get("l"),
-            "close": row.get("c"),
-            "volume": row.get("v"),
-            "vwap": row.get("vw")
+            "date":
+                date_string,
+
+            "open":
+                row.get("o"),
+
+            "high":
+                row.get("h"),
+
+            "low":
+                row.get("l"),
+
+            "close":
+                row.get("c"),
+
+            "volume":
+                row.get("v"),
+
+            "vwap":
+                row.get("vw")
         }
 
-        candles = history["symbols"].setdefault(
+        candles = history[
+            "symbols"
+        ].setdefault(
             ticker,
             []
         )
 
+        #
+        # Falls der Tag schon existiert:
+        # vorhandenen Eintrag ersetzen
+        #
         candles = [
             x
             for x in candles
-            if x.get("date") != date_string
+            if x.get("date")
+            != date_string
         ]
 
         candles.append(
@@ -322,10 +446,13 @@ def update_history(
         )
 
         candles.sort(
-            key=lambda x: x["date"]
+            key=lambda x:
+                x["date"]
         )
 
-        history["symbols"][ticker] = candles
+        history[
+            "symbols"
+        ][ticker] = candles
 
         stored += 1
 
@@ -338,22 +465,43 @@ def update_history(
 
 def main():
 
+    print()
+    print(
+        "===================================="
+    )
+    print(
+        "NASDAQ-100 + S&P-500 BACKFILL"
+    )
+    print(
+        "===================================="
+    )
+    print()
+
     universe = build_universe()
 
     history = load_history()
     progress = load_progress()
 
-    # Sicherheit:
-    # Falls die alte riesige History noch lokal vorhanden wäre,
-    # nur gewünschte Ticker behalten.
+    #
+    # Falls eine alte history.json aus dem ersten
+    # Test mit >14.000 Symbolen existieren sollte:
+    # nur relevante Aktien behalten.
+    #
     history["symbols"] = {
-        ticker: candles
+        normalize_ticker(ticker): candles
         for ticker, candles
-        in history.get("symbols", {}).items()
-        if normalize_ticker(ticker) in universe
+        in history.get(
+            "symbols",
+            {}
+        ).items()
+        if normalize_ticker(
+            ticker
+        ) in universe
     }
 
-    if progress.get("completed"):
+    if progress.get(
+        "completed"
+    ):
 
         print(
             "Backfill bereits abgeschlossen."
@@ -361,9 +509,13 @@ def main():
 
         return
 
-    current_date = datetime.fromisoformat(
-        progress["next_date"]
-    ).date()
+    current_date = (
+        datetime.fromisoformat(
+            progress[
+                "next_date"
+            ]
+        ).date()
+    )
 
     today = datetime.now(
         timezone.utc
@@ -372,10 +524,17 @@ def main():
     request_count = 0
     trading_days_found = 0
 
-    while current_date <= today:
+    while (
+        current_date
+        <= today
+    ):
 
-        if request_count >= MAX_REQUESTS_PER_RUN:
+        if (
+            request_count
+            >= MAX_REQUESTS_PER_RUN
+        ):
 
+            print()
             print(
                 "Maximale Requests für "
                 "diesen Lauf erreicht."
@@ -401,14 +560,19 @@ def main():
 
         except Exception as exc:
 
+            print()
             print(
-                f"Fehler bei {date_string}: "
+                f"Fehler bei "
+                f"{date_string}: "
                 f"{exc}"
             )
 
-            progress["next_date"] = (
-                date_string
-            )
+            #
+            # Fortschritt speichern
+            #
+            progress[
+                "next_date"
+            ] = date_string
 
             save_json(
                 HISTORY_FILE,
@@ -420,15 +584,22 @@ def main():
                 progress
             )
 
+            #
+            # Nicht hart abbrechen.
+            # Dadurch kann GitHub anschließend
+            # die Dateien noch committen.
+            #
             break
 
         if rows:
 
-            stored = update_history(
-                history,
-                date_string,
-                rows,
-                universe
+            stored = (
+                update_history(
+                    history,
+                    date_string,
+                    rows,
+                    universe
+                )
             )
 
             print(
@@ -446,14 +617,23 @@ def main():
                 "kein Handel / keine Daten"
             )
 
-        current_date += timedelta(
-            days=1
+        current_date += (
+            timedelta(
+                days=1
+            )
         )
 
-        progress["next_date"] = (
+        progress[
+            "next_date"
+        ] = (
             current_date.isoformat()
         )
 
+        #
+        # Nach jedem Tag speichern.
+        # Dadurch geht bei Abbruch
+        # kein Fortschritt verloren.
+        #
         save_json(
             HISTORY_FILE,
             history
@@ -468,11 +648,24 @@ def main():
             REQUEST_SLEEP_SECONDS
         )
 
-    if current_date > today:
+    #
+    # Ziel erreicht
+    #
+    if (
+        current_date
+        > today
+    ):
 
-        progress["completed"] = True
+        progress[
+            "completed"
+        ] = True
 
-    history["meta"] = {
+    #
+    # Metadaten aktualisieren
+    #
+    history[
+        "meta"
+    ] = {
 
         "generated_at":
             datetime.now(
@@ -484,11 +677,15 @@ def main():
 
         "symbol_count":
             len(
-                history["symbols"]
+                history[
+                    "symbols"
+                ]
             ),
 
         "universe_size":
-            len(universe),
+            len(
+                universe
+            ),
 
         "backfill_completed":
             progress.get(
@@ -514,13 +711,13 @@ def main():
 
     print()
     print(
-        "=============================="
+        "===================================="
     )
     print(
         "BACKFILL STATUS"
     )
     print(
-        "=============================="
+        "===================================="
     )
 
     print(
@@ -546,6 +743,11 @@ def main():
     print(
         f"Fertig: "
         f"{progress.get('completed')}"
+    )
+
+    print()
+    print(
+        "Backfill-Lauf beendet."
     )
 
 
