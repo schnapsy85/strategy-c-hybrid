@@ -13,27 +13,33 @@ permissions:
   id-token: write
 
 concurrency:
-  group: market-data
+  group: strategy-c-data
   cancel-in-progress: false
 
 jobs:
-
   update-and-deploy:
-
     runs-on: ubuntu-latest
 
     environment:
       name: github-pages
 
     steps:
-
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Sync with latest main
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -43,8 +49,7 @@ jobs:
       - name: Update Massive market data
         env:
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
-        run: |
-          python scripts/update_market_data.py
+        run: python scripts/update_market_data.py
 
       - name: Create test homepage
         run: |
@@ -58,7 +63,6 @@ jobs:
           <body>
             <h1>Strategy Market Data</h1>
             <p>GitHub Pages funktioniert.</p>
-
             <ul>
               <li><a href="latest.json">latest.json</a></li>
               <li><a href="history.json">history.json</a></li>
@@ -81,10 +85,11 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "Keine Änderungen."
-          else
-            git commit -m "Update market data"
-            git push
+            exit 0
           fi
+
+          git commit -m "Update market data"
+          git push origin HEAD:main
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
