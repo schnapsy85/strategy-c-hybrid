@@ -72,7 +72,7 @@ def main() -> None:
     top_quartile = set(ranked[:top_count])
     rank_map = {ticker: i + 1 for i, ticker in enumerate(ranked)}
 
-    signals = []
+    raw_signals = []
     for ticker, m in metrics.items():
         conditions = {
             "close_gt_ema50": m["close"] > m["ema50"],
@@ -87,21 +87,37 @@ def main() -> None:
         m["conditions"] = conditions
         if all(conditions.values()):
             info = meta.get(ticker, {})
-            signals.append({
+            raw_signals.append({
                 "ticker": ticker,
                 "name": info.get("security", ticker),
                 "sector": info.get("sector", ""),
                 **m,
             })
 
-    signals.sort(key=lambda x: x["performance_126d"], reverse=True)
+    raw_signals.sort(key=lambda x: x["performance_126d"], reverse=True)
     latest_date = max((m["date"] for m in metrics.values()), default=None)
     coverage = len(metrics) / len(tickers) if tickers else 0.0
+    expected_date = datetime.now(ZoneInfo("America/New_York")).date().isoformat()
+    freshness_pass = latest_date == expected_date
+    signals = raw_signals if freshness_pass else []
+
+    if not freshness_pass:
+        status = "stale_data"
+    elif coverage < 0.95:
+        status = "partial_data"
+    else:
+        status = "ok"
+
     payload = {
         "generated_at_utc": datetime.now(ZoneInfo("UTC")).isoformat(),
         "strategy": "Strategy A - Nasdaq-100 Trend",
-        "status": "ok" if coverage >= 0.95 else "partial_data",
+        "status": status,
         "latest_data_date": latest_date,
+        "freshness": {
+            "expected_data_date": expected_date,
+            "pass": freshness_pass,
+            "reason": None if freshness_pass else f"Expected completed US session {expected_date}, but latest available data is {latest_date}. Cached prior-day candidates were suppressed.",
+        },
         "coverage": {
             "members_total": len(tickers),
             "members_with_metrics": len(metrics),
@@ -113,13 +129,17 @@ def main() -> None:
             "top_quartile_count": top_count,
         },
         "signals": signals,
+        "stale_cached_candidate_count": 0 if freshness_pass else len(raw_signals),
         "metrics_by_ticker": metrics,
-        "important": "Research output only. Recheck current quote, portfolio limits, available capital and executable broker price before order preview."
+        "important": "Research output only. Stale cached candidates are never published as current signals. Recheck current quote, portfolio limits, available capital and executable broker price before order preview."
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Strategy A coverage: {len(metrics)}/{len(tickers)} ({coverage:.1%})")
+    print(f"Strategy A freshness: {freshness_pass} expected={expected_date} latest={latest_date}")
     print(f"Strategy A signals: {len(signals)}")
+    if not freshness_pass and raw_signals:
+        print(f"Suppressed {len(raw_signals)} stale cached Strategy A candidate(s).")
     for s in signals:
         print(f"SIGNAL A {s['ticker']} close={s['close']:.2f} rank126={s['rank_126d']}/{len(ranked)}")
 
