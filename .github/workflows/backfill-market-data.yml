@@ -16,146 +16,86 @@ jobs:
   backfill:
     runs-on: ubuntu-latest
     timeout-minutes: 180
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
-
       - name: Sync with latest main
         run: |
-          echo "Hole aktuellen Stand von main..."
           git fetch origin main
           git reset --hard origin/main
           git log -1 --oneline
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          else
-            pip install requests pandas numpy
-          fi
-
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install requests pandas numpy; fi
       - name: Run Massive backfill
         env:
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
         run: python scripts/backfill.py
-
       - name: Run Strategy C scan
         env:
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
           GITHUB_EVENT_NAME: workflow_dispatch
+        run: python scripts/daily_scan.py
+      - name: Run Strategy A scan
+        run: python scripts/strategy_a_scan.py
+      - name: Sync scan outputs to data
         run: |
-          echo "Berechne Strategy C mit dem aktualisierten Datenbestand..."
-          python scripts/daily_scan.py
-
-      - name: Sync scan output to data
-        run: |
-          if [ -f docs/latest.json ]; then
-            cp docs/latest.json data/latest.json
-          fi
-
+          [ ! -f docs/latest.json ] || cp docs/latest.json data/latest.json
+          [ ! -f docs/strategy_a_latest.json ] || cp docs/strategy_a_latest.json data/strategy_a_latest.json
       - name: Show backfill status
         run: |
           git status --short
           ls -lah data/ || true
-          ls -lah docs/latest.json || true
-          find data -maxdepth 1 -type f -name "*.json" -exec ls -lh {} \; || true
-
+          ls -lah docs/*.json || true
       - name: Validate JSON files
         run: |
           python <<'PY'
           import json
           from pathlib import Path
-
-          files = list(Path("data").glob("*.json"))
-          if Path("docs/latest.json").exists():
-              files.append(Path("docs/latest.json"))
-
-          failed = []
+          files = list(Path("data").glob("*.json")) + list(Path("docs").glob("*.json"))
+          failed=[]
           for file in files:
               try:
-                  with open(file, "r", encoding="utf-8") as f:
-                      json.load(f)
+                  with open(file, "r", encoding="utf-8") as f: json.load(f)
                   print(f"OK: {file}")
               except Exception as exc:
-                  print(f"FEHLER: {file}: {exc}")
-                  failed.append(str(file))
-
-          if failed:
-              raise SystemExit("Ungültige JSON-Dateien: " + ", ".join(failed))
+                  print(f"FEHLER: {file}: {exc}"); failed.append(str(file))
+          if failed: raise SystemExit("Ungültige JSON-Dateien: " + ", ".join(failed))
           PY
-
-      - name: Commit and push backfill and scan data
+      - name: Commit and push market data and scans
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add data/ docs/latest.json
-
-          if git diff --cached --quiet; then
-            echo "Keine Änderungen vorhanden."
-            exit 0
-          fi
-
+          git add data/ docs/*.json
+          if git diff --cached --quiet; then echo "Keine Änderungen vorhanden."; exit 0; fi
           git diff --cached --stat
-          git commit -m "Update market data and Strategy C scan"
+          git commit -m "Update market data and Strategy A/C scans"
           git push origin HEAD:main
-
       - name: Prepare GitHub Pages
         run: |
-          if [ -d "docs" ]; then
-            echo "docs/ gefunden."
-          elif [ -d "public" ]; then
-            mkdir -p docs
-            cp -R public/. docs/
-          else
-            mkdir -p docs
-            cat > docs/index.html <<'EOF'
-          <!DOCTYPE html>
-          <html lang="de">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Strategy C Hybrid</title>
-          </head>
-          <body>
-            <h1>Strategy C Hybrid</h1>
-            <p>Market-Daten wurden erfolgreich aktualisiert.</p>
-          </body>
-          </html>
-          EOF
-          fi
-
+          if [ ! -d "docs" ]; then mkdir -p docs; fi
       - name: Copy market data to Pages
         run: |
           mkdir -p docs/data
-          if [ -d "data" ]; then
-            cp -R data/. docs/data/
-          fi
-
+          cp -R data/. docs/data/
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./docs"
-
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
       - name: Final status
         if: always()
         run: |
