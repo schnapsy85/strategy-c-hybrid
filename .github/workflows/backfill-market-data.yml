@@ -51,10 +51,25 @@ jobs:
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
         run: python scripts/backfill.py
 
+      - name: Run Strategy C scan
+        env:
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          GITHUB_EVENT_NAME: workflow_dispatch
+        run: |
+          echo "Berechne Strategy C mit dem aktualisierten Datenbestand..."
+          python scripts/daily_scan.py
+
+      - name: Sync scan output to data
+        run: |
+          if [ -f docs/latest.json ]; then
+            cp docs/latest.json data/latest.json
+          fi
+
       - name: Show backfill status
         run: |
           git status --short
           ls -lah data/ || true
+          ls -lah docs/latest.json || true
           find data -maxdepth 1 -type f -name "*.json" -exec ls -lh {} \; || true
 
       - name: Validate JSON files
@@ -63,12 +78,10 @@ jobs:
           import json
           from pathlib import Path
 
-          data_dir = Path("data")
-          if not data_dir.exists():
-              print("WARNUNG: data/ existiert nicht.")
-              raise SystemExit(0)
+          files = list(Path("data").glob("*.json"))
+          if Path("docs/latest.json").exists():
+              files.append(Path("docs/latest.json"))
 
-          files = list(data_dir.glob("*.json"))
           failed = []
           for file in files:
               try:
@@ -83,12 +96,12 @@ jobs:
               raise SystemExit("Ungültige JSON-Dateien: " + ", ".join(failed))
           PY
 
-      - name: Commit and push backfill data
+      - name: Commit and push backfill and scan data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add data/
+          git add data/ docs/latest.json
 
           if git diff --cached --quiet; then
             echo "Keine Änderungen vorhanden."
@@ -96,7 +109,7 @@ jobs:
           fi
 
           git diff --cached --stat
-          git commit -m "Backfill market data"
+          git commit -m "Update market data and Strategy C scan"
           git push origin HEAD:main
 
       - name: Prepare GitHub Pages
