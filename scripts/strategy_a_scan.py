@@ -11,11 +11,13 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from src.market_calendar import last_completed_us_session
 from src.storage import load_store
 from src.universe import load_nasdaq100_members
 
 STORE = ROOT / "data" / "ohlcv.csv.gz"
 OUTPUT = ROOT / "docs" / "strategy_a_latest.json"
+MIN_BARS_FOR_A = 220
 
 
 def atr(df: pd.DataFrame, period: int = 20) -> pd.Series:
@@ -30,7 +32,7 @@ def atr(df: pd.DataFrame, period: int = 20) -> pd.Series:
 
 def metrics_for(tdf: pd.DataFrame) -> dict | None:
     tdf = tdf.sort_values("date").drop_duplicates("date", keep="last").copy()
-    if len(tdf) < 220:
+    if len(tdf) < MIN_BARS_FOR_A:
         return None
     close = tdf["close"].astype(float)
     high = tdf["high"].astype(float)
@@ -39,7 +41,7 @@ def metrics_for(tdf: pd.DataFrame) -> dict | None:
     sma200 = close.rolling(200).mean()
     atr20 = atr(tdf, 20)
     prior100_high = high.shift(1).rolling(100).max()
-    if len(tdf) < 147 or pd.isna(atr20.iloc[-21]):
+    if pd.isna(atr20.iloc[-21]) or pd.isna(sma200.iloc[-1]) or pd.isna(prior100_high.iloc[-1]):
         return None
     perf126 = float(close.iloc[-1] / close.iloc[-127] - 1.0)
     return {
@@ -61,11 +63,21 @@ def main() -> None:
     tickers = set(universe["ticker"])
     store = load_store(STORE)
 
+    bar_counts = {}
     metrics = {}
     for ticker in sorted(tickers):
-        m = metrics_for(store[store["ticker"] == ticker])
+        tdf = store[store["ticker"] == ticker]
+        bar_count = int(tdf["date"].nunique()) if not tdf.empty else 0
+        bar_counts[ticker] = bar_count
+        m = metrics_for(tdf)
         if m is not None:
             metrics[ticker] = m
+
+    insufficient_history = [
+        {"ticker": t, "bars": bar_counts[t]}
+        for t in sorted(tickers)
+        if t not in metrics
+    ]
 
     ranked = sorted(metrics, key=lambda t: metrics[t]["performance_126d"], reverse=True)
     top_count = max(1, (len(ranked) + 3) // 4)
@@ -96,15 +108,15 @@ def main() -> None:
 
     raw_signals.sort(key=lambda x: x["performance_126d"], reverse=True)
     latest_date = max((m["date"] for m in metrics.values()), default=None)
-    coverage = len(metrics) / len(tickers) if tickers else 0.0
-    expected_date = datetime.now(ZoneInfo("America/New_York")).date().isoformat()
+    analysis_coverage = len(metrics) / len(tickers) if tickers else 0.0
+    expected_date = last_completed_us_session().isoformat()
     freshness_pass = latest_date == expected_date
     signals = raw_signals if freshness_pass else []
 
     if not freshness_pass:
         status = "stale_data"
-    elif coverage < 0.95:
-        status = "partial_data"
+    elif analysis_coverage < 0.95:
+        status = "partial_history"
     else:
         status = "ok"
 
@@ -116,12 +128,22 @@ def main() -> None:
         "freshness": {
             "expected_data_date": expected_date,
             "pass": freshness_pass,
-            "reason": None if freshness_pass else f"Expected completed US session {expected_date}, but latest available data is {latest_date}. Cached prior-day candidates were suppressed.",
+            "reason": None if freshness_pass else f"Expected last completed US trading session {expected_date}, but latest available data is {latest_date}. Cached candidates were suppressed.",
         },
-        "coverage": {
-            "members_total": len(tickers),
-            "members_with_metrics": len(metrics),
-            "ratio": coverage,
+        "universe": {
+            "source": "Current Nasdaq-100 constituents table from Wikipedia; component count cross-check against Nasdaq official NDX component count",
+            "components_loaded": len(tickers),
+            "expected_component_count": 102,
+            "complete": len(tickers) == 102,
+            "note": "Nasdaq-100 represents 100 companies but currently has 102 securities/components because some companies have multiple share classes.",
+        },
+        "analysis_coverage": {
+            "components_total": len(tickers),
+            "components_with_required_history": len(metrics),
+            "ratio": analysis_coverage,
+            "minimum_bars_required": MIN_BARS_FOR_A,
+            "insufficient_history": insufficient_history,
+            "note": "A component can be present in the Nasdaq-100 universe but not yet analyzable when fewer than 220 daily bars are available for SMA200/EMA/ATR/ranking calculations.",
         },
         "ranking": {
             "method": "exact price performance over 126 trading days",
@@ -131,11 +153,14 @@ def main() -> None:
         "signals": signals,
         "stale_cached_candidate_count": 0 if freshness_pass else len(raw_signals),
         "metrics_by_ticker": metrics,
-        "important": "Research output only. Stale cached candidates are never published as current signals. Recheck current quote, portfolio limits, available capital and executable broker price before order preview."
+        "important": "Research output only. Universe completeness and indicator-history coverage are reported separately. Stale cached candidates are never published as current signals. Recheck current quote, portfolio limits, available capital and executable broker price before order preview."
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"Strategy A coverage: {len(metrics)}/{len(tickers)} ({coverage:.1%})")
+    print(f"Strategy A universe: {len(tickers)}/102 components loaded")
+    print(f"Strategy A analyzable history: {len(metrics)}/{len(tickers)} ({analysis_coverage:.1%})")
+    if insufficient_history:
+        print("Insufficient history: " + ", ".join(f"{x['ticker']}({x['bars']})" for x in insufficient_history))
     print(f"Strategy A freshness: {freshness_pass} expected={expected_date} latest={latest_date}")
     print(f"Strategy A signals: {len(signals)}")
     if not freshness_pass and raw_signals:
