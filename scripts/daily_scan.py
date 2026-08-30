@@ -13,6 +13,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from src.market_calendar import last_completed_us_session
 from src.massive_client import MassiveClient, MassiveAPIError
 from src.scanner import build_signal, evaluate_ticker, metrics_to_dict
 from src.storage import append_rows, load_store, save_store
@@ -98,30 +99,31 @@ def main() -> None:
     client = MassiveClient.from_env(int(cfg["massive_calls_per_minute"]))
     store = load_store(STORE)
 
-    ny_today = datetime.now(ZoneInfo("America/New_York")).date()
+    expected_session = last_completed_us_session()
+    expected_date = expected_session.isoformat()
     grouped = []
-    last_current_day_error = None
+    last_provider_error = None
     for attempt in range(1, 5):
         try:
-            grouped = client.grouped_daily(ny_today)
-            last_current_day_error = None
+            grouped = client.grouped_daily(expected_session)
+            last_provider_error = None
         except MassiveAPIError as exc:
-            last_current_day_error = str(exc)
-            print(f"WARN current grouped day attempt {attempt}: {exc}")
+            last_provider_error = str(exc)
+            print(f"WARN grouped session {expected_date} attempt {attempt}: {exc}")
             grouped = []
         if grouped:
             break
         if attempt < 4:
-            print(f"No EOD payload yet for {ny_today}; retrying in 60 seconds ({attempt}/4).")
+            print(f"No EOD payload yet for completed session {expected_date}; retrying in 60 seconds ({attempt}/4).")
             time.sleep(60)
 
-    current_rows = rows_from_grouped(grouped, requested_tickers, ny_today)
-    current_day_available = not current_rows.empty
-    if current_day_available:
+    current_rows = rows_from_grouped(grouped, requested_tickers, expected_session)
+    requested_session_available = not current_rows.empty
+    if requested_session_available:
         store = append_rows(store, current_rows)
-        print(f"Updated {ny_today}: {len(current_rows)} rows")
+        print(f"Updated completed session {expected_date}: {len(current_rows)} rows")
     else:
-        print(f"No grouped rows for {ny_today}; cached history may be stale. Signals will not be published as current.")
+        print(f"No grouped rows returned for completed session {expected_date}; checking cached history freshness.")
 
     store = ensure_short_tickers(client, store, requested_tickers, cfg)
     save_store(store, STORE)
@@ -186,16 +188,14 @@ def main() -> None:
     if not store.empty:
         latest_data_date = pd.to_datetime(store["date"]).max().date().isoformat()
 
-    expected_date = ny_today.isoformat()
-    freshness_pass = latest_data_date == expected_date and current_day_available
+    freshness_pass = latest_data_date == expected_date
     stale_reason = None
     if not freshness_pass:
         stale_reason = (
-            f"Expected completed US session {expected_date}, but latest available data is {latest_data_date}. "
-            "Current-day EOD data was unavailable from the configured Massive entitlement."
+            f"Expected last completed US trading session {expected_date}, but latest available data is {latest_data_date}. "
+            "Signals from older cached sessions are suppressed."
         )
 
-    # Critical safety rule: never expose cached prior-day candidates as current signals.
     signals = raw_signals if freshness_pass else []
     watches = raw_watches if freshness_pass else []
 
@@ -219,10 +219,11 @@ def main() -> None:
         "latest_data_date": latest_data_date,
         "freshness": {
             "expected_data_date": expected_date,
-            "current_day_payload_available": current_day_available,
+            "expected_session_rule": "Most recent completed XNYS trading session; weekends and US exchange holidays are skipped.",
+            "requested_session_payload_available": requested_session_available,
             "pass": freshness_pass,
             "reason": stale_reason,
-            "provider_error": last_current_day_error,
+            "provider_error": last_provider_error,
         },
         "coverage": {
             "members_total": len(sp_tickers),
@@ -243,12 +244,12 @@ def main() -> None:
         "stale_cached_candidate_count": 0 if freshness_pass else len(raw_signals),
         "metrics_by_ticker": all_metrics,
         "capital_reference_eur": float(cfg["capital_eur"]),
-        "important": "Signals are research output, not orders. Stale cached candidates are never published as current signals. Recheck actual Strategy C capital, next-session gap filter and executable Scalable quote before any order preview."
+        "important": "Signals are research output, not orders. Freshness uses the actual XNYS trading calendar, so weekends and US exchange holidays do not create false stale-data flags. Stale cached candidates are never published as current signals."
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Coverage: {len(eligible)}/{len(sp_tickers)} ({coverage:.1%})")
-    print(f"Freshness: {freshness_pass} expected={expected_date} latest={latest_data_date}")
+    print(f"Freshness: {freshness_pass} expected_completed_session={expected_date} latest={latest_data_date}")
     print(f"Market filter ({market_ticker} > SMA200): {proxy_market_filter if freshness_pass else 'NOT CURRENT'}")
     print(f"Signals: {len(signals)} | Watch: {len(watches)}")
     if not freshness_pass and raw_signals:
