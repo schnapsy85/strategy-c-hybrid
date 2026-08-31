@@ -9,9 +9,9 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.market_calendar import last_completed_us_session
+from src.market_calendar import last_completed_xetra_session
 from src.strategy_b import compute_strategy_b_metrics, evaluate_strategy_b
-from src.strategy_b_data import StrategyBDataError, fetch_yahoo_daily
+from src.strategy_b_data import StrategyBDataError, fetch_yahoo_daily, keep_completed_sessions
 
 DOCS_OUTPUT = ROOT / "docs" / "strategy_b_latest.json"
 DATA_OUTPUT = ROOT / "data" / "strategy_b_latest.json"
@@ -35,10 +35,13 @@ def write_payload(payload: dict) -> None:
 
 def main() -> None:
     generated_at = datetime.now(ZoneInfo("UTC")).isoformat()
-    expected_date = last_completed_us_session().isoformat()
+    expected_date = last_completed_xetra_session().isoformat()
 
     try:
-        df = fetch_yahoo_daily(ETF["data_symbol"], "3y")
+        raw_df = fetch_yahoo_daily(ETF["data_symbol"], "3y")
+        df = keep_completed_sessions(raw_df, expected_date)
+        if df.empty:
+            raise StrategyBDataError(f"No completed Xetra daily bars available through {expected_date}")
         metrics = compute_strategy_b_metrics(df)
     except (StrategyBDataError, ValueError, RuntimeError) as exc:
         payload = {
@@ -77,9 +80,10 @@ def main() -> None:
         "latest_data_date": latest_date,
         "freshness": {
             "expected_data_date": expected_date,
+            "expected_session_rule": "Most recent fully completed Xetra session; an intraday Yahoo daily bar for the current session is ignored until Xetra has closed.",
             "latest_data_date": latest_date,
             "pass": freshness_pass,
-            "reason": None if freshness_pass else f"Expected completed session {expected_date}, but latest Strategy B data is {latest_date}. Signals suppressed.",
+            "reason": None if freshness_pass else f"Expected completed Xetra session {expected_date}, but latest completed Strategy B data is {latest_date}. Signals suppressed.",
         },
         "metrics": metrics,
         "signal": decision,
@@ -92,10 +96,10 @@ def main() -> None:
             "entry": ["close > SMA200", "SMA200 today > SMA200 20 trading days ago", "ADX14 > 30"],
             "exit": ["10 consecutive closes below SMA200", "SMA200 today < SMA200 20 trading days ago"],
         },
-        "important": "Research output only. A buy is only actionable when no Strategy B position exists and broker price/capital checks are passed. Stale data never creates a signal.",
+        "important": "Research output only. A buy is only actionable when no Strategy B position exists and broker price/capital checks are passed. Only fully completed Xetra daily bars may create signals; stale data never creates a signal.",
     }
     write_payload(payload)
-    print(f"Strategy B freshness: {freshness_pass} expected={expected_date} latest={latest_date}")
+    print(f"Strategy B freshness: {freshness_pass} expected_xetra={expected_date} latest={latest_date}")
     print(f"Strategy B buy={decision['buy_signal']} exit={decision['exit_signal']}")
 
 
