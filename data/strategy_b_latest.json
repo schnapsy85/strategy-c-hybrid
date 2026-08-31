@@ -1,0 +1,19 @@
+{
+  "generated_at_utc": "2026-08-31T07:45:00+00:00",
+  "strategy": "Strategy B - MSCI World Momentum",
+  "status": "not_run_yet",
+  "instrument": {
+    "name": "iShares Edge MSCI World Momentum Factor UCITS ETF",
+    "isin": "IE00BP3QZ825",
+    "wkn": "A12ATF",
+    "xetra_ticker": "IS3R",
+    "data_symbol": "IS3R.DE"
+  },
+  "data_source": "Yahoo Finance chart API (Xetra symbol IS3R.DE)",
+  "signal": {
+    "buy_signal": false,
+    "exit_signal": false,
+    "exit_reasons": []
+  },
+  "important": "Strategy B is implemented. This placeholder is replaced by the next A/B/C workflow run; no signal is valid until that run supplies fresh market data."
+}
