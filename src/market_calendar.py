@@ -7,6 +7,7 @@ import exchange_calendars as xcals
 
 
 XNYS = xcals.get_calendar("XNYS")
+XETR = xcals.get_calendar("XETR")
 
 
 def last_completed_us_session(now: datetime | None = None) -> date:
@@ -32,6 +33,27 @@ def last_completed_us_session(now: datetime | None = None) -> date:
 
     if not candidates:
         raise RuntimeError(f"Could not determine a completed US trading session around {today}")
+    return max(candidates)
+
+
+def last_completed_xetra_session(now: datetime | None = None) -> date:
+    """Return the most recent fully completed Xetra trading session."""
+    now_berlin = now.astimezone(ZoneInfo("Europe/Berlin")) if now else datetime.now(ZoneInfo("Europe/Berlin"))
+    today = now_berlin.date()
+
+    start = today - timedelta(days=10)
+    end = today + timedelta(days=1)
+    sessions = XETR.sessions_in_range(start.isoformat(), end.isoformat())
+
+    candidates = []
+    for session in sessions:
+        session_date = session.date()
+        close_ts = XETR.session_close(session).to_pydatetime().astimezone(ZoneInfo("Europe/Berlin"))
+        if close_ts <= now_berlin:
+            candidates.append(session_date)
+
+    if not candidates:
+        raise RuntimeError(f"Could not determine a completed Xetra trading session around {today}")
     return max(candidates)
 
 
