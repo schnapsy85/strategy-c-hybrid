@@ -1,7 +1,7 @@
 {
-  "generated_at_utc": "2026-08-31T07:45:00+00:00",
+  "generated_at_utc": "2026-08-31T08:05:53.439358+00:00",
   "strategy": "Strategy B - MSCI World Momentum",
-  "status": "not_run_yet",
+  "status": "stale_data",
   "instrument": {
     "name": "iShares Edge MSCI World Momentum Factor UCITS ETF",
     "isin": "IE00BP3QZ825",
@@ -10,10 +10,50 @@
     "data_symbol": "IS3R.DE"
   },
   "data_source": "Yahoo Finance chart API (Xetra symbol IS3R.DE)",
+  "latest_data_date": "2026-08-31",
+  "freshness": {
+    "expected_data_date": "2026-08-28",
+    "latest_data_date": "2026-08-31",
+    "pass": false,
+    "reason": "Expected completed session 2026-08-28, but latest Strategy B data is 2026-08-31. Signals suppressed."
+  },
+  "metrics": {
+    "date": "2026-08-31",
+    "close": 99.01000213623047,
+    "sma200": 91.43739994049072,
+    "sma200_20d_ago": 89.63324996948242,
+    "adx14": 13.061973813575365,
+    "rsi14": 45.633924502475146,
+    "atr20": 1.8516965865985808,
+    "performance_6m": 0.1566589240788776,
+    "performance_12m": 0.25139027678443404,
+    "below_sma200_10d": false
+  },
   "signal": {
+    "conditions": {
+      "close_gt_sma200": true,
+      "sma200_rising_20d": true,
+      "adx_gt_30": false
+    },
     "buy_signal": false,
     "exit_signal": false,
     "exit_reasons": []
   },
-  "important": "Strategy B is implemented. This placeholder is replaced by the next A/B/C workflow run; no signal is valid until that run supplies fresh market data."
+  "risk_reference": {
+    "risk_per_trade_pct_of_ab_capital": 0.5,
+    "initial_stop_formula": "entry - 2.5 * ATR20",
+    "initial_stop_reference_from_latest_close": 94.38076066973402
+  },
+  "rules": {
+    "entry": [
+      "close > SMA200",
+      "SMA200 today > SMA200 20 trading days ago",
+      "ADX14 > 30"
+    ],
+    "exit": [
+      "10 consecutive closes below SMA200",
+      "SMA200 today < SMA200 20 trading days ago"
+    ]
+  },
+  "important": "Research output only. A buy is only actionable when no Strategy B position exists and broker price/capital checks are passed. Stale data never creates a signal."
 }

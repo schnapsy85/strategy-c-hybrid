@@ -1,10 +1,11 @@
 {
-  "generated_at_utc": "2026-08-31T06:06:13.407993+00:00",
+  "generated_at_utc": "2026-08-31T08:05:50.920681+00:00",
   "strategy": "Strategy C v1.0 - Dynamic RSI",
   "status": "ok",
   "data_source": {
     "primary": "Massive Stocks Daily Market Summary (adjusted OHLCV)",
     "constituents": "Current S&P 500 table from Wikipedia",
+    "shared_cache_note": "Daily grouped payload also retains all 102 current Nasdaq-100 components for Strategy A.",
     "market_filter_ticker_used": "SPY",
     "market_filter_note": "Uses I:SPX when Massive Indices Basic is active; otherwise falls back to SPY."
   },
@@ -11362,5 +11363,5 @@
     }
   },
   "capital_reference_eur": 1000.0,
-  "important": "Signals are research output, not orders. Freshness uses the actual XNYS trading calendar, so weekends and US exchange holidays do not create false stale-data flags. Stale cached candidates are never published as current signals."
+  "important": "Signals are research output, not orders. Freshness uses the actual XNYS trading calendar. The shared daily cache includes both S&P 500 and Nasdaq-100 constituents so Strategy A is not left on older bars."
 }
