@@ -42,7 +42,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run tests
-        run: pytest -q
+        run: PYTHONPATH=. pytest -q
 
       - name: Update shared A/C market data and scan Strategy C
         env:
