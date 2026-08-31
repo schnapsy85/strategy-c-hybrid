@@ -17,7 +17,7 @@ from src.market_calendar import last_completed_us_session
 from src.massive_client import MassiveClient, MassiveAPIError
 from src.scanner import build_signal, evaluate_ticker, metrics_to_dict
 from src.storage import append_rows, load_store, save_store
-from src.universe import load_sp500_members
+from src.universe import load_nasdaq100_members, load_sp500_members
 
 STORE = ROOT / "data" / "ohlcv.csv.gz"
 CONFIG = ROOT / "config.json"
@@ -90,11 +90,14 @@ def main() -> None:
         return
 
     universe = load_sp500_members()
+    nasdaq100 = load_nasdaq100_members()
     meta = universe.set_index("ticker").to_dict("index")
     sp_tickers = set(universe["ticker"].tolist())
+    ndx_tickers = set(nasdaq100["ticker"].tolist())
     proxy = str(cfg["market_proxy"])
     index_ticker = str(cfg.get("market_index_ticker", "I:SPX"))
-    requested_tickers = set(sp_tickers) | {proxy, index_ticker}
+    # One shared Massive cache serves Strategy C (S&P 500) and Strategy A (Nasdaq-100).
+    requested_tickers = set(sp_tickers) | set(ndx_tickers) | {proxy, index_ticker}
 
     client = MassiveClient.from_env(int(cfg["massive_calls_per_minute"]))
     store = load_store(STORE)
@@ -121,7 +124,7 @@ def main() -> None:
     requested_session_available = not current_rows.empty
     if requested_session_available:
         store = append_rows(store, current_rows)
-        print(f"Updated completed session {expected_date}: {len(current_rows)} rows")
+        print(f"Updated completed session {expected_date}: {len(current_rows)} shared A/C rows")
     else:
         print(f"No grouped rows returned for completed session {expected_date}; checking cached history freshness.")
 
@@ -213,6 +216,7 @@ def main() -> None:
         "data_source": {
             "primary": "Massive Stocks Daily Market Summary (adjusted OHLCV)",
             "constituents": "Current S&P 500 table from Wikipedia",
+            "shared_cache_note": f"Daily grouped payload also retains all {len(ndx_tickers)} current Nasdaq-100 components for Strategy A.",
             "market_filter_ticker_used": market_ticker,
             "market_filter_note": "Uses I:SPX when Massive Indices Basic is active; otherwise falls back to SPY."
         },
@@ -244,11 +248,12 @@ def main() -> None:
         "stale_cached_candidate_count": 0 if freshness_pass else len(raw_signals),
         "metrics_by_ticker": all_metrics,
         "capital_reference_eur": float(cfg["capital_eur"]),
-        "important": "Signals are research output, not orders. Freshness uses the actual XNYS trading calendar, so weekends and US exchange holidays do not create false stale-data flags. Stale cached candidates are never published as current signals."
+        "important": "Signals are research output, not orders. Freshness uses the actual XNYS trading calendar. The shared daily cache includes both S&P 500 and Nasdaq-100 constituents so Strategy A is not left on older bars."
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Coverage: {len(eligible)}/{len(sp_tickers)} ({coverage:.1%})")
+    print(f"Shared Nasdaq-100 universe retained: {len(ndx_tickers)} components")
     print(f"Freshness: {freshness_pass} expected_completed_session={expected_date} latest={latest_data_date}")
     print(f"Market filter ({market_ticker} > SMA200): {proxy_market_filter if freshness_pass else 'NOT CURRENT'}")
     print(f"Signals: {len(signals)} | Watch: {len(watches)}")
