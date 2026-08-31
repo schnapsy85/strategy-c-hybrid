@@ -35,7 +35,7 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install requests pandas numpy; fi
       - name: Run tests
-        run: pytest -q
+        run: PYTHONPATH=. pytest -q
       - name: Run Massive backfill
         env:
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
