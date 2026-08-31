@@ -1,17 +1,92 @@
 {
-  "generated_at_utc": "2026-08-30T21:28:29.934690+00:00",
+  "generated_at_utc": "2026-08-31T06:06:14.959817+00:00",
   "strategy": "Strategy A - Nasdaq-100 Trend",
-  "status": "stale_data",
+  "status": "partial_history",
   "latest_data_date": "2026-08-28",
   "freshness": {
-    "expected_data_date": "2026-08-30",
-    "pass": false,
-    "reason": "Expected completed US session 2026-08-30, but latest available data is 2026-08-28. Cached prior-day candidates were suppressed."
+    "expected_data_date": "2026-08-28",
+    "pass": true,
+    "reason": null
   },
-  "coverage": {
-    "members_total": 102,
-    "members_with_metrics": 86,
-    "ratio": 0.8431372549019608
+  "universe": {
+    "source": "Current Nasdaq-100 constituents table from Wikipedia; component count cross-check against Nasdaq official NDX component count",
+    "components_loaded": 102,
+    "expected_component_count": 102,
+    "complete": true,
+    "note": "Nasdaq-100 represents 100 companies but currently has 102 securities/components because some companies have multiple share classes."
+  },
+  "analysis_coverage": {
+    "components_total": 102,
+    "components_with_required_history": 86,
+    "ratio": 0.8431372549019608,
+    "minimum_bars_required": 220,
+    "insufficient_history": [
+      {
+        "ticker": "ALAB",
+        "bars": 1
+      },
+      {
+        "ticker": "ALNY",
+        "bars": 1
+      },
+      {
+        "ticker": "ARM",
+        "bars": 1
+      },
+      {
+        "ticker": "ASML",
+        "bars": 1
+      },
+      {
+        "ticker": "CCEP",
+        "bars": 1
+      },
+      {
+        "ticker": "CRWV",
+        "bars": 1
+      },
+      {
+        "ticker": "FER",
+        "bars": 1
+      },
+      {
+        "ticker": "HONA",
+        "bars": 44
+      },
+      {
+        "ticker": "MELI",
+        "bars": 1
+      },
+      {
+        "ticker": "MSTR",
+        "bars": 1
+      },
+      {
+        "ticker": "NBIS",
+        "bars": 1
+      },
+      {
+        "ticker": "PDD",
+        "bars": 1
+      },
+      {
+        "ticker": "RKLB",
+        "bars": 1
+      },
+      {
+        "ticker": "SHOP",
+        "bars": 1
+      },
+      {
+        "ticker": "SPCX",
+        "bars": 1
+      },
+      {
+        "ticker": "TRI",
+        "bars": 1
+      }
+    ],
+    "note": "A component can be present in the Nasdaq-100 universe but not yet analyzable when fewer than 220 daily bars are available for SMA200/EMA/ATR/ranking calculations."
   },
   "ranking": {
     "method": "exact price performance over 126 trading days",
@@ -1828,5 +1903,5 @@
       }
     }
   },
-  "important": "Research output only. Stale cached candidates are never published as current signals. Recheck current quote, portfolio limits, available capital and executable broker price before order preview."
+  "important": "Research output only. Universe completeness and indicator-history coverage are reported separately. Stale cached candidates are never published as current signals. Recheck current quote, portfolio limits, available capital and executable broker price before order preview."
 }
