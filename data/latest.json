@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-31T20:45:41.068537+00:00",
+  "generated_at_utc": "2026-08-31T20:53:59.608278+00:00",
   "strategy": "Strategy C v1.0 - Dynamic RSI",
   "status": "stale_data",
   "data_source": {
@@ -16,7 +16,7 @@
     "requested_session_payload_available": false,
     "pass": false,
     "reason": "Expected last completed US trading session 2026-08-31, but latest available data is 2026-08-28. Signals from older cached sessions are suppressed.",
-    "provider_error": "Massive API 403 for /v2/aggs/grouped/locale/us/market/stocks/2026-08-31: {\"status\":\"NOT_AUTHORIZED\",\"request_id\":\"2cc0c3a0218ea11ce6ab1ecf77a1eb5b\",\"message\":\"Attempted to request today's data before end of day. Please upgrade your plan at https://polygon.io/pricing\"}"
+    "provider_error": "Massive API 403 for /v2/aggs/grouped/locale/us/market/stocks/2026-08-31: {\"status\":\"NOT_AUTHORIZED\",\"request_id\":\"9a23f381d6e2be91d7b748055c7527fb\",\"message\":\"Attempted to request today's data before end of day. Please upgrade your plan at https://polygon.io/pricing\"}"
   },
   "coverage": {
     "members_total": 503,
