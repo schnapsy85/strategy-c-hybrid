@@ -14,6 +14,14 @@ class StrategyBDataError(RuntimeError):
     pass
 
 
+def keep_completed_sessions(df: pd.DataFrame, completed_date: str) -> pd.DataFrame:
+    """Drop rows newer than the most recent fully completed trading session."""
+    work = df.copy()
+    dates = pd.to_datetime(work["date"]).dt.date
+    cutoff = pd.Timestamp(completed_date).date()
+    return work.loc[dates <= cutoff].sort_values("date").reset_index(drop=True)
+
+
 def fetch_yahoo_daily(symbol: str = "IS3R.DE", range_: str = "3y") -> pd.DataFrame:
     """Fetch daily OHLCV for Strategy B from Yahoo Finance's chart endpoint."""
     response = requests.get(
