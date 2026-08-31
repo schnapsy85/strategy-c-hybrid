@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-08-31T13:56:37.444071+00:00",
+  "generated_at_utc": "2026-08-31T20:45:43.266444+00:00",
   "strategy": "Strategy A - Nasdaq-100 Trend",
-  "status": "ok",
+  "status": "stale_data",
   "latest_data_date": "2026-08-28",
   "freshness": {
-    "expected_data_date": "2026-08-28",
-    "pass": true,
-    "reason": null
+    "expected_data_date": "2026-08-31",
+    "pass": false,
+    "reason": "Expected last completed US trading session 2026-08-31, but latest available data is 2026-08-28. Cached candidates were suppressed."
   },
   "universe": {
     "source": "Current Nasdaq-100 constituents table from Wikipedia; component count cross-check against Nasdaq official NDX component count",

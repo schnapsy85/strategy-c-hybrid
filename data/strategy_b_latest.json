@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-31T13:56:38.150156+00:00",
+  "generated_at_utc": "2026-08-31T20:45:44.170637+00:00",
   "strategy": "Strategy B - MSCI World Momentum",
   "status": "ok",
   "instrument": {
@@ -10,24 +10,24 @@
     "data_symbol": "IS3R.DE"
   },
   "data_source": "Yahoo Finance chart API (Xetra symbol IS3R.DE)",
-  "latest_data_date": "2026-08-28",
+  "latest_data_date": "2026-08-31",
   "freshness": {
-    "expected_data_date": "2026-08-28",
+    "expected_data_date": "2026-08-31",
     "expected_session_rule": "Most recent fully completed Xetra session; an intraday Yahoo daily bar for the current session is ignored until Xetra has closed.",
-    "latest_data_date": "2026-08-28",
+    "latest_data_date": "2026-08-31",
     "pass": true,
     "reason": null
   },
   "metrics": {
-    "date": "2026-08-28",
-    "close": 99.30000305175781,
-    "sma200": 91.35669994354248,
-    "sma200_20d_ago": 89.55494998931884,
-    "adx14": 13.32611155609626,
-    "rsi14": 46.607023900585666,
-    "atr20": 1.932312212481442,
-    "performance_6m": 0.16167523575211962,
-    "performance_12m": 0.25315504453288495,
+    "date": "2026-08-31",
+    "close": 98.04000091552734,
+    "sma200": 91.43254993438721,
+    "sma200_20d_ago": 89.63324996948242,
+    "adx14": 13.470474760256407,
+    "rsi14": 42.65506928438566,
+    "atr20": 1.8986967086688933,
+    "performance_6m": 0.14532713391539565,
+    "performance_12m": 0.23913040333865077,
     "below_sma200_10d": false
   },
   "signal": {
@@ -43,7 +43,7 @@
   "risk_reference": {
     "risk_per_trade_pct_of_ab_capital": 0.5,
     "initial_stop_formula": "entry - 2.5 * ATR20",
-    "initial_stop_reference_from_latest_close": 94.46922252055421
+    "initial_stop_reference_from_latest_close": 93.29325914385511
   },
   "rules": {
     "entry": [
