@@ -1,4 +1,4 @@
-name: Daily Strategy C Scan
+name: Daily Strategy A/B/C Scan
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -41,23 +41,39 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Update data and scan Strategy C
+      - name: Run tests
+        run: pytest -q
+
+      - name: Update shared A/C market data and scan Strategy C
         env:
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: python scripts/daily_scan.py
 
-      - name: Commit cache and latest result
+      - name: Scan Strategy A
+        run: python scripts/strategy_a_scan.py
+
+      - name: Scan Strategy B
+        run: python scripts/strategy_b_scan.py
+
+      - name: Sync scan outputs to data
+        run: |
+          cp docs/latest.json data/latest.json
+          cp docs/strategy_a_latest.json data/strategy_a_latest.json
+          cp docs/strategy_b_latest.json data/strategy_b_latest.json
+
+      - name: Commit cache and A/B/C results
         run: |
           git config user.name "strategy-c-bot"
           git config user.email "strategy-c-bot@users.noreply.github.com"
 
-          git add data/ohlcv.csv.gz docs/latest.json
+          git add data/ohlcv.csv.gz data/latest.json data/strategy_a_latest.json data/strategy_b_latest.json \
+                  docs/latest.json docs/strategy_a_latest.json docs/strategy_b_latest.json
 
           if git diff --cached --quiet; then
             echo "Keine Änderungen vorhanden."
             exit 0
           fi
 
-          git commit -m "Daily Strategy C scan"
+          git commit -m "Daily Strategy A/B/C scan"
           git push origin HEAD:main
