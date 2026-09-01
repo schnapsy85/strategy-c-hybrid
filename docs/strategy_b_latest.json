@@ -1,7 +1,7 @@
 {
-  "generated_at_utc": "2026-09-01T13:04:21.858146+00:00",
+  "generated_at_utc": "2026-09-01T20:23:33.960558+00:00",
   "strategy": "Strategy B - MSCI World Momentum",
-  "status": "stale_data",
+  "status": "ok",
   "instrument": {
     "name": "iShares Edge MSCI World Momentum Factor UCITS ETF",
     "isin": "IE00BP3QZ825",
@@ -10,24 +10,24 @@
     "data_symbol": "IS3R.DE"
   },
   "data_source": "Yahoo Finance chart API (Xetra symbol IS3R.DE)",
-  "latest_data_date": "2026-08-28",
+  "latest_data_date": "2026-09-01",
   "freshness": {
-    "expected_data_date": "2026-08-31",
+    "expected_data_date": "2026-09-01",
     "expected_session_rule": "Most recent fully completed Xetra session; an intraday Yahoo daily bar for the current session is ignored until Xetra has closed.",
-    "latest_data_date": "2026-08-28",
-    "pass": false,
-    "reason": "Expected completed Xetra session 2026-08-31, but latest completed Strategy B data is 2026-08-28. Signals suppressed."
+    "latest_data_date": "2026-09-01",
+    "pass": true,
+    "reason": null
   },
   "metrics": {
-    "date": "2026-08-28",
-    "close": 99.30000305175781,
-    "sma200": 91.35669994354248,
-    "sma200_20d_ago": 89.55494998931884,
-    "adx14": 13.32611155609626,
-    "rsi14": 46.607023900585666,
-    "atr20": 1.932312212481442,
-    "performance_6m": 0.16167523575211962,
-    "performance_12m": 0.25315504453288495,
+    "date": "2026-09-01",
+    "close": 98.01000213623047,
+    "sma200": 91.43239994049073,
+    "sma200_20d_ago": 89.63324996948242,
+    "adx14": 13.670359899598717,
+    "rsi14": 42.56913080581574,
+    "atr20": 1.9221967697040496,
+    "performance_6m": 0.14497668087997928,
+    "performance_12m": 0.23875124790063884,
     "below_sma200_10d": false
   },
   "signal": {
@@ -43,7 +43,7 @@
   "risk_reference": {
     "risk_per_trade_pct_of_ab_capital": 0.5,
     "initial_stop_formula": "entry - 2.5 * ATR20",
-    "initial_stop_reference_from_latest_close": 94.46922252055421
+    "initial_stop_reference_from_latest_close": 93.20451021197034
   },
   "rules": {
     "entry": [

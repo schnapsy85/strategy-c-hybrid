@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-09-01T13:04:21.020247+00:00",
+  "generated_at_utc": "2026-09-01T20:23:33.332334+00:00",
   "strategy": "Strategy A - Nasdaq-100 Trend",
-  "status": "ok",
+  "status": "stale_data",
   "latest_data_date": "2026-08-31",
   "freshness": {
-    "expected_data_date": "2026-08-31",
-    "pass": true,
-    "reason": null
+    "expected_data_date": "2026-09-01",
+    "pass": false,
+    "reason": "Expected last completed US trading session 2026-09-01, but latest available data is 2026-08-31. Cached candidates were suppressed."
   },
   "universe": {
     "source": "Current Nasdaq-100 constituents table from Wikipedia; component count cross-check against Nasdaq official NDX component count",
@@ -33,33 +33,8 @@
     "eligible_count": 101,
     "top_quartile_count": 26
   },
-  "signals": [
-    {
-      "ticker": "CRWD",
-      "name": "CrowdStrike",
-      "sector": "",
-      "date": "2026-08-31",
-      "close": 231.0,
-      "ema50": 195.26216938880881,
-      "ema100": 175.97819639283753,
-      "sma200": 140.9355005,
-      "prior_100d_high": 229.08,
-      "atr20": 11.533000000000001,
-      "atr20_20d_ago": 10.155475,
-      "performance_126d": 1.400873044743543,
-      "rank_126d": 6,
-      "percentile_126d": 0.9504950495049505,
-      "conditions": {
-        "close_gt_ema50": true,
-        "ema50_gt_ema100": true,
-        "ema100_gt_sma200": true,
-        "breakout_100d": true,
-        "atr_expanding": true,
-        "top_25pct_126d": true
-      }
-    }
-  ],
-  "stale_cached_candidate_count": 0,
+  "signals": [],
+  "stale_cached_candidate_count": 1,
   "metrics_by_ticker": {
     "AAPL": {
       "date": "2026-08-31",
