@@ -140,17 +140,16 @@ Diese URL enthält **nur Scan-Ergebnisse, niemals den API-Key**.
 
 Wenn du die URL hast, schick sie mir. Dann kann der ChatGPT-Workflow für Strategie C auf genau diese Datei umgestellt werden.
 
-## Schritt 7 – täglicher Lauf
+## Agent-triggered weekday runs
 
-Der Workflow `Daily Strategy C Scan` läuft montags bis freitags automatisch.
+Scheduled Strategy A/B/C runs are initiated by the private ChatGPT automation.
+At each configured weekday slot, the agent updates
+`.automation/run-request.json`. The path-filtered push starts
+`Daily Strategy A/B/C Scan`.
 
-GitHub Actions arbeitet bei Cron-Zeitplänen ausschließlich in UTC. Deshalb sind zwei UTC-Zeiten eingetragen. Das Python-Skript prüft `Europe/Berlin` und lässt nur den Lauf im lokalen **22-Uhr-Zeitfenster** weiterarbeiten. Dadurch funktioniert der Zeitplan auch bei Sommer-/Winterzeit.
-
-Der GitHub-Scan startet ungefähr **22:15 Uhr deutscher Zeit**, damit die JSON-Datei für den ChatGPT-Scan um ca. **22:30 Uhr** möglichst bereits fertig ist.
-
-Manuell testen kannst du jederzeit über:
-
-**Actions → Daily Strategy C Scan → Run workflow**
+GitHub no longer owns the recurring clock schedule. Manual
+`workflow_dispatch` remains available for diagnostics. Updates to scan output
+files and `.automation/signal-state.json` do not trigger another scan.
 
 ## Strategie-C-Regeln im Code
 
