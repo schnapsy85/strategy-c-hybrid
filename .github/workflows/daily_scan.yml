@@ -2,11 +2,10 @@ name: Daily Strategy A/B/C Scan
 
 on:
   workflow_dispatch:
-  schedule:
-    # GitHub cron is UTC and has no Europe/Berlin timezone support.
-    # Two runs + a local-time guard make this DST-safe. Exactly one run lands in 22:xx Berlin.
-    - cron: '15 20 * * 1-5'
-    - cron: '15 21 * * 1-5'
+  push:
+    branches: [main]
+    paths:
+      - '.automation/run-request.json'
 
 permissions:
   contents: write
