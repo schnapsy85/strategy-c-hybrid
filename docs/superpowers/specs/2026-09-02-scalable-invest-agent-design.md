@@ -51,6 +51,8 @@ Zu jedem geplanten Zeitpunkt:
 5. sucht er den dazugehörigen Lauf von daily_scan.yml;
 6. überwacht er genau diesen Lauf bis zum Status completed.
 
+Zur eindeutigen Zuordnung filtert der Agent nach Workflow-Pfad, Push-Ereignis, Branch, Erstellungszeitpunkt und dem Commit-SHA der Startanforderung. Er prüft den Status höchstens einmal pro Minute und beendet die Überwachung nach maximal 45 Minuten als Timeout. Bei einem Timeout erfolgt keine Strategie- oder Orderentscheidung.
+
 Die fünf Zeitpunkte gelten ausschließlich montags bis freitags. Wochenendläufe finden nicht statt. Die Zeitzone Europe/Berlin muss erhalten bleiben, damit Sommer- und Winterzeit automatisch berücksichtigt werden.
 
 ## Workflow-Überwachung und Wiederholungen
@@ -99,7 +101,13 @@ Bestehende Strategiepositionen werden der korrekten Gruppe zugeordnet. Andere Fo
 
 Nach einer bestätigten und nachweislich ausgeführten neuen Strategieorder ordnet der Agent die neue Position bei einem Folgelauf der passenden Strategiegruppe zu. Eine Position wird erst zugeordnet, wenn sie tatsächlich im Bestand vorhanden ist.
 
-Startkapital, realisierte historische Strategietrades und bereits bearbeitete Signale werden ausschließlich im privaten Agentenauftrag geführt, nicht im öffentlichen Repository.
+Startkapital und realisierte historische Strategietrades werden ausschließlich im privaten Agentenauftrag geführt, nicht im öffentlichen Repository.
+
+Für die technische Deduplizierung darf eine zweite öffentliche Steuerdatei verwendet werden:
+
+- .automation/signal-state.json
+
+Sie enthält ausschließlich Signal-Schlüssel aus ohnehin öffentlichen Scannergebnissen, bestehend aus Strategie, Ticker, Signaltyp und Signaldatum. Sie enthält keine Depotbestände, Stückzahlen, Kurse, Budgets, Order-IDs, Bestätigungen oder persönlichen Entscheidungen. Eine Änderung dieser Datei darf den Scan-Workflow nicht auslösen.
 
 ## Scalable-Prüfung
 
