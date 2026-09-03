@@ -15,6 +15,7 @@ from src.strategy_b_data import StrategyBDataError, fetch_yahoo_daily, keep_comp
 
 DOCS_OUTPUT = ROOT / "docs" / "strategy_b_latest.json"
 DATA_OUTPUT = ROOT / "data" / "strategy_b_latest.json"
+MIN_HISTORY_BARS = 253
 
 ETF = {
     "name": "iShares Edge MSCI World Momentum Factor UCITS ETF",
@@ -23,6 +24,16 @@ ETF = {
     "xetra_ticker": "IS3R",
     "data_symbol": "IS3R.DE",
 }
+
+
+def coverage_payload(has_required_history: bool) -> dict:
+    return {
+        "instruments_total": 1,
+        "instruments_with_required_history": int(has_required_history),
+        "ratio": 1.0 if has_required_history else 0.0,
+        "minimum_bars_required": MIN_HISTORY_BARS,
+        "missing_or_short": [] if has_required_history else [ETF["xetra_ticker"]],
+    }
 
 
 def write_payload(payload: dict) -> None:
@@ -51,7 +62,9 @@ def main() -> None:
             "instrument": ETF,
             "data_source": "Yahoo Finance chart API (Xetra symbol IS3R.DE)",
             "freshness": {"expected_data_date": expected_date, "latest_data_date": None, "pass": False},
+            "coverage": coverage_payload(False),
             "signal": {"buy_signal": False, "exit_signal": False, "exit_reasons": []},
+            "stale_cached_candidate_count": 0,
             "error": str(exc),
             "important": "No Strategy B signal is published when the data feed is unavailable or invalid.",
         }
@@ -62,6 +75,7 @@ def main() -> None:
     latest_date = metrics["date"]
     freshness_pass = latest_date == expected_date
     decision = evaluate_strategy_b(metrics)
+    stale_cached_candidate_count = int(decision["buy_signal"] or decision["exit_signal"])
     if not freshness_pass:
         decision = {
             **decision,
@@ -85,8 +99,10 @@ def main() -> None:
             "pass": freshness_pass,
             "reason": None if freshness_pass else f"Expected completed Xetra session {expected_date}, but latest completed Strategy B data is {latest_date}. Signals suppressed.",
         },
+        "coverage": coverage_payload(True),
         "metrics": metrics,
         "signal": decision,
+        "stale_cached_candidate_count": 0 if freshness_pass else stale_cached_candidate_count,
         "risk_reference": {
             "risk_per_trade_pct_of_ab_capital": 0.5,
             "initial_stop_formula": "entry - 2.5 * ATR20",

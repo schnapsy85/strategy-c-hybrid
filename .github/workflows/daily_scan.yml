@@ -2,11 +2,10 @@ name: Daily Strategy A/B/C Scan
 
 on:
   workflow_dispatch:
-  schedule:
-    # GitHub cron is UTC and has no Europe/Berlin timezone support.
-    # Two runs + a local-time guard make this DST-safe. Exactly one run lands in 22:xx Berlin.
-    - cron: '15 20 * * 1-5'
-    - cron: '15 21 * * 1-5'
+  push:
+    branches: [main]
+    paths:
+      - '.automation/run-request.json'
 
 permissions:
   contents: write
@@ -17,6 +16,7 @@ concurrency:
 
 jobs:
   scan:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -24,13 +24,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
-
-      - name: Sync with latest main
-        run: |
-          git fetch origin main
-          git reset --hard origin/main
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -61,6 +56,9 @@ jobs:
           cp docs/latest.json data/latest.json
           cp docs/strategy_a_latest.json data/strategy_a_latest.json
           cp docs/strategy_b_latest.json data/strategy_b_latest.json
+
+      - name: Stamp scan outputs
+        run: python scripts/stamp_scan_outputs.py ${{ github.sha }}
 
       - name: Commit cache and A/B/C results
         run: |

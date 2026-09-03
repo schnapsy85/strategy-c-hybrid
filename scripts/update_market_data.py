@@ -13,7 +13,7 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 
 HISTORY_FILE = DATA_DIR / "history.json"
-LATEST_FILE = DATA_DIR / "latest.json"
+LATEST_FILE = DATA_DIR / "market_data_latest.json"
 
 # Wir behalten rund 450 Kalendertage.
 # Das ergibt deutlich mehr als die benötigten 200 Handelstage.

@@ -64,7 +64,7 @@ jobs:
             <h1>Strategy Market Data</h1>
             <p>GitHub Pages funktioniert.</p>
             <ul>
-              <li><a href="latest.json">latest.json</a></li>
+              <li><a href="market_data_latest.json">market_data_latest.json</a></li>
               <li><a href="history.json">history.json</a></li>
             </ul>
           </body>

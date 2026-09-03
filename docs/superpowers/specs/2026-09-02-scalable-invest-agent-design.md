@@ -1,7 +1,7 @@
 # Design: Automatisierter Scalable-Invest-Agent
 
 Datum: 2026-09-02  
-Status: Vom Nutzer inhaltlich freigegeben; Umsetzung noch ausstehend
+Status: Implementiert und verifiziert
 
 ## Ziel
 
@@ -15,16 +15,17 @@ Repository: schnapsy85/strategy-c-hybrid
 Branch: main  
 Zentraler Workflow: .github/workflows/daily_scan.yml
 
-Der Workflow führt bereits folgende Schritte aus:
+Der Workflow führt folgende Schritte aus:
 
-1. Repository auschecken und mit main synchronisieren.
+1. Exakt den auslösenden Request-Commit auschecken.
 2. Python und Abhängigkeiten einrichten.
 3. Tests ausführen.
 4. gemeinsame Marktdaten aktualisieren und Strategie C scannen.
 5. Strategie A scannen.
 6. Strategie B scannen.
 7. Ergebnisse nach data und docs synchronisieren.
-8. geänderte Daten und Scanergebnisse nach main schreiben.
+8. alle sechs Ergebnisdateien mit dem auslösenden Request-Commit stempeln.
+9. geänderte Daten und Scanergebnisse nach main schreiben.
 
 Maßgebliche Ergebnisdateien:
 
@@ -82,26 +83,27 @@ Nach einem erfolgreichen GitHub-Lauf liest der Agent die drei Ergebnisdateien ne
 - unterdrückte Signale;
 - Marktfilter;
 - Kauf-, Watch- und Exit-Signale.
+- top-level `request_commit_sha` stimmt exakt mit dem überwachten Request-Commit überein.
 
-Ein GitHub-Lauf gilt für die Agentenauswertung nur dann als fachlich erfolgreich, wenn die Dateien zum überwachten Lauf gehören und die jeweilige Strategie ihre eigenen Datenqualitätsregeln erfüllt.
+Ein GitHub-Lauf gilt für die Agentenauswertung nur dann als fachlich erfolgreich, wenn jede Ergebnisdatei einen top-level `request_commit_sha` trägt, dieser exakt dem überwachten Request-Commit entspricht und die jeweilige Strategie ihre eigenen Datenqualitätsregeln erfüllt. Eine Datei mit fehlendem oder abweichendem `request_commit_sha` ist nicht verwendbar.
 
 Bei stale_data, partial_data oder einer fehlgeschlagenen Freshness-Prüfung werden Signale der betroffenen Strategie gesperrt. Andere fehlerfreie Strategien können weiterhin ausgewertet werden, sofern keine gemeinsame Datenquelle beschädigt ist.
 
-## Private Trennung der Strategiepositionen
+## Private Trennung der Strategiepositionen ohne Portfolio-Gruppen
 
 Das Repository ist öffentlich. Deshalb dürfen dort keine persönlichen Depotwerte, exakten Bestände, Broker-Portfolio-IDs, Order-IDs, Transaktionshistorien oder privaten Performancewerte gespeichert werden.
 
-Die Zuordnung offener Strategiepositionen erfolgt privat in Scalable über drei Portfolio-Gruppen:
+Die Zuordnung erfolgt ausschließlich über eine private Strategie-Allowlist im Agentenauftrag. Jeder Eintrag enthält intern mindestens die Strategiezuordnung, Wertpapierkennung, Lebenszykluszustand und die zugehörige bestätigte Broker-Order- beziehungsweise Transaktionsreferenz. Diese Daten werden weder in GitHub noch in Berichten veröffentlicht.
 
-- Strategie A
-- Strategie B
-- Strategie C
+Die initiale private Allowlist wird beim Einrichten der Automation ausschließlich anhand genehmigter und verifizierter Broker-Herkunft aufgelöst. Öffentliche Dateien nennen weder Mitgliederzahl, Strategieallokation, Instrumente noch aktuelle oder historische Positionszustände.
 
-Bestehende Strategiepositionen werden der korrekten Gruppe zugeordnet. Andere Fonds, ETFs, Derivate, Sparpläne und private Positionen bleiben ungruppiert oder in ihren bisherigen Gruppen und werden vom Agenten nicht verändert.
+Bei jeder Depotprüfung darf der Agent zwar den Gesamtbestand lesen, aber nur Positionen auswerten oder verändern, deren Herkunft durch einen privaten Allowlist-Eintrag und die zugehörige Scalable-Transaktion eindeutig belegt ist. Alle anderen Fonds, ETFs, Derivate, Sparpläne, Aktien und privaten Positionen werden verworfen und bleiben unverändert.
 
-Nach einer bestätigten und nachweislich ausgeführten neuen Strategieorder ordnet der Agent die neue Position bei einem Folgelauf der passenden Strategiegruppe zu. Eine Position wird erst zugeordnet, wenn sie tatsächlich im Bestand vorhanden ist.
+Nach einer separat bestätigten Order ergänzt der interaktive Agent den privaten Agentenauftrag um die konkrete Orderreferenz. Der private Lebenszyklus darf erst fortgeschrieben werden, wenn Scalable das Ergebnis nachweislich zeigt. Frühere Provenienz bleibt nach einem vollständig ausgeführten Ausstieg zur Abgrenzung späterer privater Käufe erhalten.
 
-Startkapital und realisierte historische Strategietrades werden ausschließlich im privaten Agentenauftrag geführt, nicht im öffentlichen Repository.
+Lässt sich die Herkunft einer Position nicht eindeutig einer bestätigten Strategieorder zuordnen, bestehen gemischte private und strategische Käufe desselben Wertpapiers oder fehlen Transaktionsdaten, wird das Instrument vollständig für Strategieaktionen gesperrt und im Bericht als Zuordnungskonflikt ausgewiesen.
+
+Alle privaten Kapital-, Allowlist- und Provenienzdaten werden ausschließlich im privaten Agentenauftrag geführt, nicht im öffentlichen Repository.
 
 Für die technische Deduplizierung darf eine zweite öffentliche Steuerdatei verwendet werden:
 
@@ -113,15 +115,16 @@ Sie enthält ausschließlich Signal-Schlüssel aus ohnehin öffentlichen Scanner
 
 Nach validierten GitHub-Ergebnissen liest der Agent:
 
-- die drei Strategiegruppen;
-- zugehörige Bestände und aktuelle Kurse;
+- die private Strategie-Allowlist;
+- den Scalable-Gesamtbestand zur anschließenden strikten Filterung gegen diese Allowlist;
+- eindeutig zugeordnete Strategiebestände und aktuelle Kurse;
 - relevante offene, ausstehende und abgeschlossene Transaktionen;
 - aktiven Stop- oder Verkaufsorders;
 - den zur Strategie gehörenden Kapitalstatus.
 
 Scalable-Zugriffe erhalten bis zu zwei Wiederholungsversuche. Bleiben Depot-, Kurs-, Transaktions- oder Budgetdaten unvollständig, wird keine Ordervorschau erstellt.
 
-Andere Depotpositionen dürfen weder für das Strategiebudget angerechnet noch verkauft, gruppiert, mit Stops versehen oder anderweitig verändert werden.
+Andere Depotpositionen dürfen weder für das Strategiebudget angerechnet noch verkauft, mit Stops versehen oder anderweitig verändert werden. Eine bloße Übereinstimmung von Ticker, Name oder ISIN ohne passende private Order- oder Transaktionsreferenz reicht nicht als Strategiezuordnung.
 
 ## Signal- und Orderlogik
 
@@ -183,8 +186,8 @@ Die Umsetzung erfolgt in dieser Reihenfolge:
 1. neutrale Steuerdatei anlegen;
 2. daily_scan.yml um den eingeschränkten Push-Trigger ergänzen und den alten Zeitplan entfernen;
 3. Repository-Tests ausführen beziehungsweise durch einen manuellen Triggerlauf verifizieren;
-4. drei private Scalable-Strategiegruppen anlegen;
-5. bestehende Strategiepositionen korrekt zuordnen;
+4. die initiale private Allowlist beim Einrichten der Automation ausschließlich aus genehmigter, verifizierter Broker-Provenienz auflösen;
+5. die Broker-Isolation ohne Offenlegung der privaten Auflösung verifizieren;
 6. geplanten Agenten mit den fünf Werktagszeiten erstellen;
 7. einen beaufsichtigten End-to-End-Test durchführen;
 8. prüfen, dass genau ein Workflow ausgelöst wird, dieser erfolgreich abgeschlossen wird und der Agent anschließend GitHub und Scalable vollständig auswertet;
@@ -198,7 +201,7 @@ Die Lösung ist erst fertig, wenn:
 - genau der dadurch ausgelöste GitHub-Lauf identifiziert und bis zum Abschluss überwacht wird;
 - Fehler nach der vereinbarten Logik behandelt und berichtet werden;
 - ausschließlich aktuelle und valide A/B/C-Ergebnisse verwendet werden;
-- ausschließlich private Strategiegruppen in Scalable ausgewertet werden;
+- ausschließlich Positionen mit einer eindeutigen privaten Allowlist- und Broker-Transaktionszuordnung ausgewertet werden;
 - Nicht-Strategiepositionen unangetastet bleiben;
 - nach jedem Lauf ein vollständiger Bericht erscheint;
 - gültige Orders vollständig vorbereitet, aber niemals ohne separate Bestätigung übermittelt werden;

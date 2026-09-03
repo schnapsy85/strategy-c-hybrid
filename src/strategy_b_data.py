@@ -24,12 +24,15 @@ def keep_completed_sessions(df: pd.DataFrame, completed_date: str) -> pd.DataFra
 
 def fetch_yahoo_daily(symbol: str = "IS3R.DE", range_: str = "3y") -> pd.DataFrame:
     """Fetch daily OHLCV for Strategy B from Yahoo Finance's chart endpoint."""
-    response = requests.get(
-        YAHOO_CHART_URL.format(symbol=symbol),
-        params={"range": range_, "interval": "1d", "events": "div,splits", "includeAdjustedClose": "true"},
-        headers=HEADERS,
-        timeout=30,
-    )
+    try:
+        response = requests.get(
+            YAHOO_CHART_URL.format(symbol=symbol),
+            params={"range": range_, "interval": "1d", "events": "div,splits", "includeAdjustedClose": "true"},
+            headers=HEADERS,
+            timeout=30,
+        )
+    except (requests.RequestException, OSError) as exc:
+        raise StrategyBDataError(f"Yahoo Finance request failed for {symbol}") from exc
     if response.status_code != 200:
         raise StrategyBDataError(f"Yahoo Finance HTTP {response.status_code}: {response.text[:300]}")
     try:

@@ -4,7 +4,7 @@
 
 **Goal:** Build a weekday agent that triggers, monitors, validates, and reports every Strategy A/B/C GitHub scan and prepares confirmation-gated Scalable orders when action is required.
 
-**Architecture:** A scheduled ChatGPT automation writes a unique, non-sensitive request marker to GitHub. A path-filtered push trigger starts `daily_scan.yml`; the same agent correlates the resulting workflow run by commit SHA, monitors it to completion, validates all three result files, and then evaluates only private Scalable strategy groups. No broker data is persisted in the public repository.
+**Architecture:** A scheduled ChatGPT automation writes a unique, non-sensitive request marker to GitHub. A path-filtered push trigger starts `daily_scan.yml`; the same agent correlates the resulting workflow run by commit SHA, monitors it to completion, validates all three result files, and filters Scalable state through a private allowlist backed by exact broker provenance. No broker data is persisted in the public repository.
 
 **Tech Stack:** GitHub Actions YAML, Python 3.12, pytest, JSON control files, GitHub connector, Scalable connector, ChatGPT Automations with iCalendar scheduling.
 
@@ -17,11 +17,12 @@
 - Never write portfolio IDs, holdings, quantities, broker prices, order IDs, transaction details, budgets, or private performance data to the public repository.
 - Preserve all existing Strategy A, B, and C trading rules.
 - Suppress signals from stale, partial, or otherwise invalid data.
-- Never touch holdings outside the three private Scalable strategy groups.
+- Never touch a holding unless a private allowlist entry and its Scalable order/transaction provenance identify it unambiguously as a strategy position.
 - Never submit a trade without a current complete preview and a separate explicit confirmation for that individual preview.
 - Never retry an order blindly after a timeout or unknown outcome.
 - Provide a complete report after every scheduled run, including no-signal and error outcomes.
 - Run repository tests before treating any GitHub result as valid.
+- Treat a result file as usable only when its top-level `request_commit_sha` equals the monitored request commit.
 
 ---
 
@@ -231,54 +232,39 @@ Expected: one commit that removes the cron schedule and adds only the path-filte
 
 ---
 
-### Task 3: Create private Scalable strategy groups
+### Task 3: Establish the private allowlist lifecycle
 
 **Files:**
 - No repository files.
-- Private broker state only.
+- Private broker and automation state only.
 
 **Interfaces:**
-- Consumes: the authenticated Scalable portfolio and the already approved private mapping of current strategy holdings.
-- Produces: three private groups named `Strategie A`, `Strategie B`, and `Strategie C`.
+- Consumes: authenticated Scalable holdings, orders, and transactions plus privately approved provenance records.
+- Produces: an initial private allowlist resolved during automation setup. Public files contain no member count, strategy allocation, instrument identity, or current/historical position state.
 
-- [ ] **Step 1: Re-read the accessible portfolio and current groups**
+- [ ] **Step 1: Re-read the accessible portfolio and current broker state**
 
-Use the Scalable read-only portfolio and group operations. Confirm that the selected portfolio belongs to the authenticated user and capture the current group list privately.
+List accessible portfolios, holdings, transactions, open orders, and portfolio groups. Confirm exactly one authenticated portfolio is selected. Record identifiers only in private working context.
 
-Expected: one accessible portfolio and no conflicting groups with the three target names.
+Expected: the connector succeeds and the current state can be reconciled without writing private data to GitHub or the worktree.
 
-- [ ] **Step 2: Create the three empty groups sequentially**
+- [ ] **Step 2: Resolve approved provenance privately**
 
-Create, in this order:
+Resolve each privately approved entry to its exact Scalable security identifier and matching broker order or transaction provenance. Determine its lifecycle solely from verified broker evidence. Do not infer membership from ticker similarity, security type, or being ungrouped.
 
-1. `Strategie A` — description: `Automatisierte Strategie A – Nasdaq-100 Trend`
-2. `Strategie B` — description: `Automatisierte Strategie B – MSCI World Momentum`
-3. `Strategie C` — description: `Automatisierte Strategie C – Dynamic RSI`
+Expected: only entries with unambiguous provenance are included in the private resolution.
 
-Expected: each operation returns `created: true` and a distinct private group ID.
+- [ ] **Step 3: Build the private allowlist payload**
 
-- [ ] **Step 3: Resolve the approved current strategy holdings privately**
+Prepare a private prompt fragment with entries containing the strategy mapping, security identifier, instrument key, lifecycle state, and matching broker order or transaction provenance. Do not persist the fragment, its membership, its allocation, or its resolved state in any public or local repository file.
 
-Read current holdings and current strategy transactions. Match only the open holdings previously approved as Strategy C trades. Do not infer strategy membership from security type, ticker similarity, or being ungrouped.
+Expected: the fragment is sufficient to distinguish strategy holdings from any later private purchase of the same ticker.
 
-Expected: every selected holding has a confirmed existing Strategy C origin; all unrelated holdings remain excluded.
+- [ ] **Step 4: Verify the private lifecycle and isolation**
 
-- [ ] **Step 4: Assign only the approved open Strategy C holdings**
+Re-read holdings, transactions, open orders, and organizational metadata. Confirm that each private allowlist entry still matches its stored provenance and that unrelated broker state remains excluded. Block any ambiguous entry.
 
-Add the privately resolved Strategy C ISINs to the newly created `Strategie C` group in one operation. Do not add any fund, ETF, derivative, savings-plan holding, or unrelated stock.
-
-Expected: the response lists exactly the approved Strategy C ISINs as assigned.
-
-- [ ] **Step 5: Verify isolation**
-
-Read all three groups and the ungrouped holdings again.
-
-Expected:
-
-- `Strategie A` and `Strategie B` are empty unless a current approved holding exists for them.
-- `Strategie C` contains exactly the approved open Strategy C holdings.
-- every unrelated holding is unchanged.
-- no order, sale, cancellation, savings-plan change, or cash movement occurred.
+Expected: the private resolution is internally consistent and no holding, order, savings plan, group, or cash state changes.
 
 ---
 
@@ -289,7 +275,7 @@ Expected:
 - One private ChatGPT Automation task.
 
 **Interfaces:**
-- Consumes: GitHub repository `schnapsy85/strategy-c-hybrid`, the three scan JSON files, the three private Scalable groups, the private strategy-capital baseline, and the approved closed-trade baseline.
+- Consumes: GitHub repository `schnapsy85/strategy-c-hybrid`, the three scan JSON files, the private allowlist fragment from Task 3, and private capital and provenance baselines.
 - Produces: five weekday runs and five complete reports per weekday, with individual confirmation-gated order previews when required.
 
 - [ ] **Step 1: Perform required connector preflight checks**
@@ -297,7 +283,7 @@ Expected:
 Immediately before creating the task:
 
 1. read the GitHub repository or `.automation/run-request.json`;
-2. list accessible Scalable portfolios and the three strategy groups.
+2. list accessible Scalable portfolios, holdings, transactions, and open orders.
 
 Expected: both connectors return successfully without a Connect, Reconnect, approval, or authorization error. Stop task creation if either preflight fails.
 
@@ -339,19 +325,20 @@ The prompt must instruct each run to perform this exact sequence:
 7. Poll no more often than once per minute for at most 45 minutes.
 8. On failure, read jobs, steps, and available logs; rerun failed jobs once; monitor the new attempt; report and stop if it fails again.
 9. On success, freshly read `data/strategy_a_latest.json`, `data/strategy_b_latest.json`, and `data/latest.json`.
-10. Verify generation time, completed-session freshness, status, universe completeness, coverage, market filter, suppressed signals, signals, watch candidates, and exit conditions for every strategy.
+10. Verify every file's top-level `request_commit_sha` equals the monitored request commit, then verify generation time, completed-session freshness, status, universe completeness, coverage, market filter, suppressed signals, signals, watch candidates, and exit conditions for every strategy. A file with a missing or mismatched request commit is unusable.
 11. Suppress only the affected strategy when its independent data is stale or partial; suppress all strategies if the shared cache is invalid.
-12. Read the three private Scalable strategy groups, their holdings, current quotes, relevant transactions, active stops, and strategy-only capital state. Retry read failures at most twice.
-13. Exclude every holding outside the three strategy groups.
+12. Read the private allowlist embedded in this task, then read Scalable holdings, current quotes, relevant transactions, active stops, and strategy-only capital state. Retry read failures at most twice.
+13. Include a position only when its private allowlist entry and broker order/transaction provenance match unambiguously. Exclude every other holding, including a same-ticker holding with a different or missing provenance.
 14. Reconcile existing strategy holdings with A/B/C exit and stop rules.
 15. For new signals, check `.automation/signal-state.json`, existing holdings, open orders, current broker quote, gap filter, tradability, venue, available strategy capital, risk sizing, and initial stop.
 16. Update `.automation/signal-state.json` only with public keys `strategy`, `ticker`, `signal_type`, and `signal_date`, and only after a complete broker evaluation. Never place broker data in that file.
 17. Produce a complete German report after every run, including run identity and duration, A/B/C status and freshness, coverage, filters, signals, watch and exits, strategy-only positions, current prices, P/L, stops, stop distances, pending strategy orders, free strategy capital, strategy equity, actions, retries, and errors.
 18. When an action is valid, create the matching Scalable preview and present the complete human-readable review. Stop and request a separate explicit confirmation for that individual preview.
 19. Never submit automatically, reuse confirmation, touch non-strategy holdings, use stale data, duplicate a signal, or blindly retry an order with an unknown outcome.
-20. After a confirmed and settled buy is visible in a later run, add the holding to its corresponding private Scalable strategy group.
+20. After a separately confirmed submission, add the returned broker reference to this task's private allowlist. Advance its private lifecycle only after a later Scalable read proves the outcome, and retain prior provenance after a fully executed exit so later private buys remain excluded.
+21. If allowlist persistence, provenance matching, or mixed private/strategy lots are ambiguous, block every action for that instrument and report the conflict.
 
-The private prompt may contain the approved capital and historical strategy baselines but must not copy them into GitHub.
+The private prompt may contain the approved capital and provenance baselines but must not copy them into GitHub.
 
 - [ ] **Step 4: Verify the created task**
 
@@ -364,7 +351,7 @@ Expected:
 - timing mode is exact;
 - recurrence is Monday through Friday;
 - all five requested times are present;
-- prompt names both required connectors and the exact repository;
+- prompt names both required connectors, the exact repository, and the private allowlist/provenance rule;
 - no automatic order submission is authorized.
 
 ---
@@ -379,7 +366,7 @@ Expected:
 - Read: `data/latest.json`
 
 **Interfaces:**
-- Consumes: implemented trigger contract, updated workflow, private Scalable groups, and scheduled agent logic.
+- Consumes: implemented trigger contract, updated workflow, private allowlist lifecycle, and scheduled agent logic.
 - Produces: evidence that one request creates one workflow run and one complete post-run evaluation without submitting an order.
 
 - [ ] **Step 1: Trigger a supervised test request**
@@ -405,6 +392,7 @@ Expected: `status: completed` and `conclusion: success`. If it fails, exercise t
 Freshly read all three result files and verify:
 
 - generation timestamps are after the supervised request;
+- each top-level `request_commit_sha` equals the supervised request commit;
 - each file reports its explicit status and freshness;
 - coverage and suppressed-signal fields are present;
 - signals are not silently emitted from stale data.
@@ -413,7 +401,7 @@ Expected: all valid strategies are usable; any invalid strategy is visibly suppr
 
 - [ ] **Step 5: Verify Scalable isolation and report composition**
 
-Read the three strategy groups and generate the complete strategy-only report. Confirm unrelated holdings are absent from every strategy total and action.
+Read the private allowlist and Scalable broker state, match provenance, and generate the complete strategy-only report. Confirm unrelated holdings and any unmatched same-ticker lots are absent from every strategy total and action.
 
 Expected: the report contains all required sections and no unrelated position is modified.
 
