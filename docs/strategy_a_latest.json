@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-09-03T16:31:41.294060+00:00",
+  "generated_at_utc": "2026-09-03T20:37:41.618182+00:00",
   "strategy": "Strategy A - Nasdaq-100 Trend",
-  "status": "ok",
+  "status": "stale_data",
   "latest_data_date": "2026-09-02",
   "freshness": {
-    "expected_data_date": "2026-09-02",
-    "pass": true,
-    "reason": null
+    "expected_data_date": "2026-09-03",
+    "pass": false,
+    "reason": "Expected last completed US trading session 2026-09-03, but latest available data is 2026-09-02. Cached candidates were suppressed."
   },
   "universe": {
     "source": "Current Nasdaq-100 constituents table from Wikipedia; component count cross-check against Nasdaq official NDX component count",
@@ -2159,5 +2159,5 @@
     }
   },
   "important": "Research output only. Universe completeness and indicator-history coverage are reported separately. Stale cached candidates are never published as current signals. Recheck current quote, portfolio limits, available capital and executable broker price before order preview.",
-  "request_commit_sha": "3d113694e548cd14b7f0697f316455a9f4c65b31"
+  "request_commit_sha": "3c24095c2e1aa7c220051414015776754903ab50"
 }
