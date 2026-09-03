@@ -1,4 +1,11 @@
 {
   "version": 1,
-  "evaluated_signals": []
+  "evaluated_signals": [
+    {
+      "strategy": "C",
+      "ticker": "JNJ",
+      "signal_type": "C1",
+      "signal_date": "2026-09-02"
+    }
+  ]
 }
