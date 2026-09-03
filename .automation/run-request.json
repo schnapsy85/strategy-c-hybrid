@@ -1,6 +1,6 @@
 {
-  "request_id": "supervised-20260902215330-8xt5msy2",
-  "requested_at_utc": "2026-09-02T21:53:30.153Z",
-  "scheduled_slot_local": "supervised_test",
+  "request_id": "supervised-final-20260903070419-hnd2sqbs",
+  "requested_at_utc": "2026-09-03T07:04:19.821Z",
+  "scheduled_slot_local": "supervised_history_cleanup_test",
   "source": "chatgpt_supervised_test"
 }
