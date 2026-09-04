@@ -6,6 +6,24 @@
       "ticker": "JNJ",
       "signal_type": "C1",
       "signal_date": "2026-09-02"
+    },
+    {
+      "strategy": "C",
+      "ticker": "AWK",
+      "signal_type": "C1",
+      "signal_date": "2026-09-03"
+    },
+    {
+      "strategy": "C",
+      "ticker": "CINF",
+      "signal_type": "C1",
+      "signal_date": "2026-09-03"
+    },
+    {
+      "strategy": "C",
+      "ticker": "ED",
+      "signal_type": "C1",
+      "signal_date": "2026-09-03"
     }
   ]
 }
