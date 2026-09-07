@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-04T20:36:43.956331+00:00",
+  "generated_at_utc": "2026-09-07T06:35:55.286189+00:00",
   "strategy": "Strategy B - MSCI World Momentum",
   "status": "ok",
   "instrument": {
@@ -28,13 +28,13 @@
   "metrics": {
     "date": "2026-09-04",
     "close": 99.87000274658203,
-    "sma200": 91.67649993896484,
-    "sma200_20d_ago": 89.91019996643067,
-    "adx14": 13.379269638327056,
-    "rsi14": 50.30055963556539,
-    "atr20": 1.8470426716954562,
-    "performance_6m": 0.19676460633694148,
-    "performance_12m": 0.2820282514809007,
+    "sma200": 91.7633999633789,
+    "sma200_20d_ago": 90.00699996948242,
+    "adx14": 13.208687102405362,
+    "rsi14": 50.56822460870166,
+    "atr20": 1.7835905701541401,
+    "performance_6m": 0.21956287081382508,
+    "performance_12m": 0.27694673207597087,
     "below_sma200_10d": false
   },
   "signal": {
@@ -51,7 +51,7 @@
   "risk_reference": {
     "risk_per_trade_pct_of_ab_capital": 0.5,
     "initial_stop_formula": "entry - 2.5 * ATR20",
-    "initial_stop_reference_from_latest_close": 95.2523960673434
+    "initial_stop_reference_from_latest_close": 95.41102632119669
   },
   "rules": {
     "entry": [
@@ -65,5 +65,5 @@
     ]
   },
   "important": "Research output only. A buy is only actionable when no Strategy B position exists and broker price/capital checks are passed. Only fully completed Xetra daily bars may create signals; stale data never creates a signal.",
-  "request_commit_sha": "ec8c70f46f3d730d3bec0e6cb545b244e0db5a29"
+  "request_commit_sha": "930bfc4b294e092e72cd14e9a5dbe0bf1fd1a78d"
 }
