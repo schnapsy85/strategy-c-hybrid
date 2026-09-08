@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-08T06:40:23.626059+00:00",
+  "generated_at_utc": "2026-09-08T13:49:31.100559+00:00",
   "strategy": "Strategy C v1.0 - Dynamic RSI",
   "status": "ok",
   "data_source": {
@@ -11364,5 +11364,5 @@
   },
   "capital_reference_eur": 1000.0,
   "important": "Signals are research output, not orders. Freshness uses the actual XNYS trading calendar. The shared daily cache includes both S&P 500 and Nasdaq-100 constituents so Strategy A is not left on older bars.",
-  "request_commit_sha": "109089656d0c973a432d02ae499f384632bfac66"
+  "request_commit_sha": "2d65655da9c0913dc4079a5fa6783008e2652ba1"
 }
