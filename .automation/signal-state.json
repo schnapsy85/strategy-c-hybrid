@@ -24,6 +24,12 @@
       "ticker": "ED",
       "signal_type": "C1",
       "signal_date": "2026-09-03"
+    },
+    {
+      "strategy": "C",
+      "ticker": "TER",
+      "signal_type": "C1",
+      "signal_date": "2026-09-09"
     }
   ]
 }
