@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-10T06:32:27.307257+00:00",
+  "generated_at_utc": "2026-09-10T10:35:55.643618+00:00",
   "strategy": "Strategy B - MSCI World Momentum",
   "status": "stale_data",
   "instrument": {
@@ -65,5 +65,5 @@
     ]
   },
   "important": "Research output only. A buy is only actionable when no Strategy B position exists and broker price/capital checks are passed. Only fully completed Xetra daily bars may create signals; stale data never creates a signal.",
-  "request_commit_sha": "1edc3d3dbeabbd0f9aa328a0944fe14fd1428f4e"
+  "request_commit_sha": "25f76be766039aea885613f864f02884d193cd45"
 }
