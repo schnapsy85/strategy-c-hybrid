@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-14T10:35:59.920323+00:00",
+  "generated_at_utc": "2026-09-14T20:37:13.648324+00:00",
   "strategy": "Strategy B - MSCI World Momentum",
   "status": "ok",
   "instrument": {
@@ -10,11 +10,11 @@
     "data_symbol": "IS3R.DE"
   },
   "data_source": "Yahoo Finance chart API (Xetra symbol IS3R.DE)",
-  "latest_data_date": "2026-09-11",
+  "latest_data_date": "2026-09-14",
   "freshness": {
-    "expected_data_date": "2026-09-11",
+    "expected_data_date": "2026-09-14",
     "expected_session_rule": "Most recent fully completed Xetra session; an intraday Yahoo daily bar for the current session is ignored until Xetra has closed.",
-    "latest_data_date": "2026-09-11",
+    "latest_data_date": "2026-09-14",
     "pass": true,
     "reason": null
   },
@@ -26,15 +26,15 @@
     "missing_or_short": []
   },
   "metrics": {
-    "date": "2026-09-11",
-    "close": 100.66000366210938,
-    "sma200": 92.27129997253418,
-    "sma200_20d_ago": 90.49939994812011,
-    "adx14": 10.550304556850607,
-    "rsi14": 52.75546697133376,
-    "atr20": 1.670532429555837,
-    "performance_6m": 0.20652047577500365,
-    "performance_12m": 0.2424093783361534,
+    "date": "2026-09-14",
+    "close": 98.83999633789062,
+    "sma200": 92.36389995574952,
+    "sma200_20d_ago": 90.60584995269775,
+    "adx14": 10.600456989354818,
+    "rsi14": 45.555232945500876,
+    "atr20": 1.702005960665936,
+    "performance_6m": 0.18116629992145405,
+    "performance_12m": 0.2145490252365343,
     "below_sma200_10d": false
   },
   "signal": {
@@ -51,7 +51,7 @@
   "risk_reference": {
     "risk_per_trade_pct_of_ab_capital": 0.5,
     "initial_stop_formula": "entry - 2.5 * ATR20",
-    "initial_stop_reference_from_latest_close": 96.48367258821978
+    "initial_stop_reference_from_latest_close": 94.58498143622579
   },
   "rules": {
     "entry": [
@@ -65,5 +65,5 @@
     ]
   },
   "important": "Research output only. A buy is only actionable when no Strategy B position exists and broker price/capital checks are passed. Only fully completed Xetra daily bars may create signals; stale data never creates a signal.",
-  "request_commit_sha": "bdb66c2ebdfe4a35fe31bffede68e0cfddf849b8"
+  "request_commit_sha": "4c0b0b19558a7ab4c3801ff1038511dc68a239c6"
 }
