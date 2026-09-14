@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-14T06:37:02.599114+00:00",
+  "generated_at_utc": "2026-09-14T10:35:58.962506+00:00",
   "strategy": "Strategy A - Nasdaq-100 Trend",
   "status": "ok",
   "latest_data_date": "2026-09-11",
@@ -2159,5 +2159,5 @@
     }
   },
   "important": "Research output only. Universe completeness and indicator-history coverage are reported separately. Stale cached candidates are never published as current signals. Recheck current quote, portfolio limits, available capital and executable broker price before order preview.",
-  "request_commit_sha": "6fbca2e5de2c0856b59aed17a0f546ca94ffaa1a"
+  "request_commit_sha": "bdb66c2ebdfe4a35fe31bffede68e0cfddf849b8"
 }
