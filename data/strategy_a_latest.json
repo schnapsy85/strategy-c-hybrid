@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-09-15T13:22:03.314802+00:00",
+  "generated_at_utc": "2026-09-15T20:35:11.282122+00:00",
   "strategy": "Strategy A - Nasdaq-100 Trend",
-  "status": "ok",
+  "status": "stale_data",
   "latest_data_date": "2026-09-14",
   "freshness": {
-    "expected_data_date": "2026-09-14",
-    "pass": true,
-    "reason": null
+    "expected_data_date": "2026-09-15",
+    "pass": false,
+    "reason": "Expected last completed US trading session 2026-09-15, but latest available data is 2026-09-14. Cached candidates were suppressed."
   },
   "universe": {
     "source": "Current Nasdaq-100 constituents table from Wikipedia; component count cross-check against Nasdaq official NDX component count",
@@ -33,33 +33,8 @@
     "eligible_count": 101,
     "top_quartile_count": 26
   },
-  "signals": [
-    {
-      "ticker": "CRWD",
-      "name": "CrowdStrike",
-      "sector": "",
-      "date": "2026-09-14",
-      "close": 235.38,
-      "ema50": 200.67579973369297,
-      "ema100": 182.07482685742704,
-      "sma200": 144.667263,
-      "prior_100d_high": 233.88,
-      "atr20": 13.360679999999999,
-      "atr20_20d_ago": 8.954225,
-      "performance_126d": 1.1311965231563224,
-      "rank_126d": 8,
-      "percentile_126d": 0.9306930693069306,
-      "conditions": {
-        "close_gt_ema50": true,
-        "ema50_gt_ema100": true,
-        "ema100_gt_sma200": true,
-        "breakout_100d": true,
-        "atr_expanding": true,
-        "top_25pct_126d": true
-      }
-    }
-  ],
-  "stale_cached_candidate_count": 0,
+  "signals": [],
+  "stale_cached_candidate_count": 1,
   "metrics_by_ticker": {
     "AAPL": {
       "date": "2026-09-14",
@@ -2184,5 +2159,5 @@
     }
   },
   "important": "Research output only. Universe completeness and indicator-history coverage are reported separately. Stale cached candidates are never published as current signals. Recheck current quote, portfolio limits, available capital and executable broker price before order preview.",
-  "request_commit_sha": "585f3541f74609e808bcaa53ba78f5cd501cfeb0"
+  "request_commit_sha": "c767e43013cfc12d962babb57035a9bbc1903811"
 }
