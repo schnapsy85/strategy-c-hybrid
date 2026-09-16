@@ -30,6 +30,24 @@
       "ticker": "TER",
       "signal_type": "C1",
       "signal_date": "2026-09-09"
+    },
+    {
+      "strategy": "C",
+      "ticker": "CINF",
+      "signal_type": "C1",
+      "signal_date": "2026-09-15"
+    },
+    {
+      "strategy": "C",
+      "ticker": "RVTY",
+      "signal_type": "C1",
+      "signal_date": "2026-09-15"
+    },
+    {
+      "strategy": "C",
+      "ticker": "APA",
+      "signal_type": "C2",
+      "signal_date": "2026-09-15"
     }
   ]
 }
