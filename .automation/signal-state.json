@@ -54,6 +54,18 @@
       "ticker": "FCX",
       "signal_type": "C1",
       "signal_date": "2026-09-17"
+    },
+    {
+      "strategy": "C",
+      "ticker": "AMZN",
+      "signal_type": "C1",
+      "signal_date": "2026-09-18"
+    },
+    {
+      "strategy": "C",
+      "ticker": "GEV",
+      "signal_type": "C1",
+      "signal_date": "2026-09-18"
     }
   ]
 }
