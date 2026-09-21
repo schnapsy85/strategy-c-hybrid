@@ -1,7 +1,7 @@
 {
-  "generated_at_utc": "2026-09-18T13:32:16.906404+00:00",
+  "generated_at_utc": "2026-09-21T13:33:03.856337+00:00",
   "strategy": "Strategy B - MSCI World Momentum",
-  "status": "stale_data",
+  "status": "ok",
   "instrument": {
     "name": "iShares Edge MSCI World Momentum Factor UCITS ETF",
     "isin": "IE00BP3QZ825",
@@ -10,13 +10,13 @@
     "data_symbol": "IS3R.DE"
   },
   "data_source": "Yahoo Finance chart API (Xetra symbol IS3R.DE)",
-  "latest_data_date": "2026-09-16",
+  "latest_data_date": "2026-09-18",
   "freshness": {
-    "expected_data_date": "2026-09-17",
+    "expected_data_date": "2026-09-18",
     "expected_session_rule": "Most recent fully completed Xetra session; an intraday Yahoo daily bar for the current session is ignored until Xetra has closed.",
-    "latest_data_date": "2026-09-16",
-    "pass": false,
-    "reason": "Expected completed Xetra session 2026-09-17, but latest completed Strategy B data is 2026-09-16. Signals suppressed."
+    "latest_data_date": "2026-09-18",
+    "pass": true,
+    "reason": null
   },
   "coverage": {
     "instruments_total": 1,
@@ -26,15 +26,15 @@
     "missing_or_short": []
   },
   "metrics": {
-    "date": "2026-09-16",
-    "close": 99.62999725341797,
-    "sma200": 92.533099899292,
-    "sma200_20d_ago": 90.77669994354248,
-    "adx14": 10.540125975235737,
-    "rsi14": 49.17320595834694,
-    "atr20": 1.6410604557949524,
-    "performance_6m": 0.21396366058109262,
-    "performance_12m": 0.22531054292090502,
+    "date": "2026-09-18",
+    "close": 101.05999755859375,
+    "sma200": 92.72099990844727,
+    "sma200_20d_ago": 90.93859992980957,
+    "adx14": 10.17205272558094,
+    "rsi14": 54.673199857991776,
+    "atr20": 1.576182488601038,
+    "performance_6m": 0.24305035381433115,
+    "performance_12m": 0.2646726683421865,
     "below_sma200_10d": false
   },
   "signal": {
@@ -51,7 +51,7 @@
   "risk_reference": {
     "risk_per_trade_pct_of_ab_capital": 0.5,
     "initial_stop_formula": "entry - 2.5 * ATR20",
-    "initial_stop_reference_from_latest_close": 95.52734611393059
+    "initial_stop_reference_from_latest_close": 97.11954133709115
   },
   "rules": {
     "entry": [
@@ -65,5 +65,5 @@
     ]
   },
   "important": "Research output only. A buy is only actionable when no Strategy B position exists and broker price/capital checks are passed. Only fully completed Xetra daily bars may create signals; stale data never creates a signal.",
-  "request_commit_sha": "9a887738515c51ac2def62a59e7e97d1c4e6d77b"
+  "request_commit_sha": "28f24b32f7ba77ff51f742a0c3c7c314539a8c09"
 }
