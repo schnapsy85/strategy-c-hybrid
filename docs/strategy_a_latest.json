@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-09-21T15:58:07.722543+00:00",
+  "generated_at_utc": "2026-09-22T21:23:52.244228+00:00",
   "strategy": "Strategy A - Nasdaq-100 Trend",
-  "status": "ok",
-  "latest_data_date": "2026-09-18",
+  "status": "stale_data",
+  "latest_data_date": "2026-09-21",
   "freshness": {
-    "expected_data_date": "2026-09-18",
-    "pass": true,
-    "reason": null
+    "expected_data_date": "2026-09-22",
+    "pass": false,
+    "reason": "Expected last completed US trading session 2026-09-22, but latest available data is 2026-09-21. Cached candidates were suppressed."
   },
   "universe": {
     "source": "Current Nasdaq-100 constituents table from Wikipedia; component count cross-check against Nasdaq official NDX component count",
@@ -23,7 +23,7 @@
     "insufficient_history": [
       {
         "ticker": "HONA",
-        "bars": 58
+        "bars": 59
       }
     ],
     "note": "A component can be present in the Nasdaq-100 universe but not yet analyzable when fewer than 220 daily bars are available for SMA200/EMA/ATR/ranking calculations."
@@ -1843,15 +1843,15 @@
       }
     },
     "SPCX": {
-      "date": "2026-09-18",
-      "close": 152.71,
-      "ema50": 133.93823391919136,
-      "ema100": 110.909883278588,
-      "sma200": 63.997011,
+      "date": "2026-09-21",
+      "close": 151.85,
+      "ema50": 134.64065611843878,
+      "ema100": 111.72057865921002,
+      "sma200": 64.6313675,
       "prior_100d_high": 225.64,
-      "atr20": 6.31682,
-      "atr20_20d_ago": 10.019735000000003,
-      "performance_126d": 6.017922794117647,
+      "atr20": 6.33682,
+      "atr20_20d_ago": 9.984235000000002,
+      "performance_126d": 5.993151915115064,
       "rank_126d": 1,
       "percentile_126d": 1.0,
       "conditions": {
@@ -2138,5 +2138,5 @@
     }
   },
   "important": "Research output only. Universe completeness and indicator-history coverage are reported separately. Stale cached candidates are never published as current signals. Recheck current quote, portfolio limits, available capital and executable broker price before order preview.",
-  "request_commit_sha": "d2f9e33a237b425e468488faf4012fbece0c5599"
+  "request_commit_sha": "b348d9ba5fc49eece28345f66578b0260ea35fcc"
 }

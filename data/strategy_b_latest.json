@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-21T15:58:08.477823+00:00",
+  "generated_at_utc": "2026-09-22T21:23:53.206694+00:00",
   "strategy": "Strategy B - MSCI World Momentum",
   "status": "ok",
   "instrument": {
@@ -10,11 +10,11 @@
     "data_symbol": "IS3R.DE"
   },
   "data_source": "Yahoo Finance chart API (Xetra symbol IS3R.DE)",
-  "latest_data_date": "2026-09-21",
+  "latest_data_date": "2026-09-22",
   "freshness": {
-    "expected_data_date": "2026-09-21",
+    "expected_data_date": "2026-09-22",
     "expected_session_rule": "Most recent fully completed Xetra session; an intraday Yahoo daily bar for the current session is ignored until Xetra has closed.",
-    "latest_data_date": "2026-09-21",
+    "latest_data_date": "2026-09-22",
     "pass": true,
     "reason": null
   },
@@ -26,15 +26,15 @@
     "missing_or_short": []
   },
   "metrics": {
-    "date": "2026-09-21",
-    "close": 103.4800033569336,
-    "sma200": 92.8281999206543,
+    "date": "2026-09-22",
+    "close": 104.0199966430664,
+    "sma200": 92.83089988708497,
     "sma200_20d_ago": 91.01524993896484,
-    "adx14": 11.28600398511368,
-    "rsi14": 62.54361552044931,
-    "atr20": 1.623373577794033,
-    "performance_6m": 0.2700048980561056,
-    "performance_12m": 0.27879394091047005,
+    "adx14": 11.616284171598178,
+    "rsi14": 63.94072844797561,
+    "atr20": 1.6633733489121971,
+    "performance_6m": 0.27663220860943616,
+    "performance_12m": 0.2854671156305857,
     "below_sma200_10d": false
   },
   "signal": {
@@ -51,7 +51,7 @@
   "risk_reference": {
     "risk_per_trade_pct_of_ab_capital": 0.5,
     "initial_stop_formula": "entry - 2.5 * ATR20",
-    "initial_stop_reference_from_latest_close": 99.4215694124485
+    "initial_stop_reference_from_latest_close": 99.86156327078591
   },
   "rules": {
     "entry": [
@@ -65,5 +65,5 @@
     ]
   },
   "important": "Research output only. A buy is only actionable when no Strategy B position exists and broker price/capital checks are passed. Only fully completed Xetra daily bars may create signals; stale data never creates a signal.",
-  "request_commit_sha": "d2f9e33a237b425e468488faf4012fbece0c5599"
+  "request_commit_sha": "b348d9ba5fc49eece28345f66578b0260ea35fcc"
 }
