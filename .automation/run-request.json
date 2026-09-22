@@ -1,6 +1,6 @@
 {
-  "request_id": "manual-20260921T155506363Z-5gacgnkp",
-  "requested_at_utc": "2026-09-21T15:55:06.363Z",
-  "scheduled_slot_local": "2026-09-21T17:55:06+02:00",
+  "request_id": "automation-20260922T211752016Z-nbf1livy",
+  "requested_at_utc": "2026-09-22T21:17:52.016Z",
+  "scheduled_slot_local": "2026-09-22T15:30:00+02:00",
   "source": "chatgpt_automation"
 }
